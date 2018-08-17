@@ -11,6 +11,7 @@ import random
 import imp
 import matplotlib.pyplot as plt
 import utils
+import FeatureExtraction
 utils = imp.reload(utils)
 
 tf.reset_default_graph()
@@ -26,8 +27,10 @@ KEEP_PROB_VAL = 1.0
 DATASET_SIZE_TRAIN = 20
 DATASET_SIZE_VAL = 2
 NFFT = 512
+NUMBER_BINS = 128
 STFT_OVERLAP = 0.75
-NUM_CLASSES = int(NFFT/2+1)
+#NUM_CLASSES = int(NFFT/2+1)
+NUM_CLASSES = NUMBER_BINS
 AUDIO_dB_SPL = 60
 
 ### Early stopping criteria ###
@@ -128,28 +131,8 @@ with tf.Session() as sess:
 				if epochCount == MAX_EPOCHS:
 					break
 
-				x, fs = utils.wavToSamples(filePathFeat)
-				x = utils.adjustSNR(x,AUDIO_dB_SPL)
-
-				xRef, fs = utils.wavToSamples(filePathLabel.replace('feat','ref'))
-				xRef = utils.adjustSNR(xRef,AUDIO_dB_SPL)
-
-				features,X_phi,_,_ = utils.STFT(x,fs,NFFT,int(NFFT*STFT_OVERLAP))
-				features = np.float32(features)
-				features = np.log10(features + 1e-7)
-				features = features - featMean
-				features = features/featStd
-
-				features = np.transpose(features)
-				features.shape
-
-				labels,L_phi,_,_ = utils.STFT(xRef,fs,NFFT,int(NFFT*STFT_OVERLAP))
-				labels = np.float32(labels)
-				labels = np.log10(labels + 1e-7)
-				labels = labels - featMean
-				labels = labels/featStd
-
-				labels = np.transpose(labels)
+				features,features_phi = FeatureExtraction.FeatureExtraction(filePathFeat,AUDIO_dB_SPL,NFFT,STFT_OVERLAP,NUMBER_BINS,featMean,featStd)
+				labels,labels_phi = FeatureExtraction.FeatureExtraction(filePathLabel.replace('feat','ref'),AUDIO_dB_SPL,NFFT,STFT_OVERLAP,NUMBER_BINS,featMean,featStd)
 
 				idx1Train = 0
 				idx2Train = idx1Train+BATCH_SIZE
@@ -199,27 +182,8 @@ with tf.Session() as sess:
 				filePathFeat_val = feat_root_val + '/' + file
 				filePathRef_val = label_root_val + '/' + file
 
-				x, fs = utils.wavToSamples(filePathFeat_val)
-				x = utils.adjustSNR(x,AUDIO_dB_SPL)
-
-				xRef, fs = utils.wavToSamples(filePathRef_val.replace('feat','ref'))
-				xRef = utils.adjustSNR(xRef,AUDIO_dB_SPL)
-
-				features_val,X_phi,_,_ = utils.STFT(x,fs,NFFT,int(NFFT*STFT_OVERLAP))
-				features_val = np.float32(features_val)
-				features_val = np.log10(features_val + 1e-7)
-				features_val = features_val - featMean
-				features_val = features_val/featStd
-
-				features_val = np.transpose(features_val)
-
-				labels_val,L_phi,_,_ = utils.STFT(xRef,fs,NFFT,int(NFFT*STFT_OVERLAP))
-				labels_val = np.float32(labels_val)
-				labels_val = np.log10(labels_val + 1e-7)
-				labels_val = labels_val - featMean
-				labels_val = labels_val/featStd
-
-				labels_val = np.transpose(labels_val)
+				features_val,features_val_phi = FeatureExtraction.FeatureExtraction(filePathFeat,AUDIO_dB_SPL,NFFT,STFT_OVERLAP,NUMBER_BINS,featMean,featStd)
+				labels_val,labels_val_phi = FeatureExtraction.FeatureExtraction(filePathLabel.replace('feat','ref'),AUDIO_dB_SPL,NFFT,STFT_OVERLAP,NUMBER_BINS,featMean,featStd)
 
 				idx1Val = 0
 				idx2Val = idx1Val+BATCH_SIZE
