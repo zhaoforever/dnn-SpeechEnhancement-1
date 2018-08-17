@@ -1,7 +1,6 @@
-## Unfreeze model
 import tensorflow as tf
 import utils
-import FFNModel
+import FFNModelTF
 import numpy as np
 import matplotlib.pyplot as plt
 from tensorflow.python.tools import inspect_checkpoint as chkp
@@ -102,7 +101,7 @@ dataFeatures = tf.data.Dataset.from_tensor_slices(features_placeholder)
 
 testDataset = tf.data.Dataset.zip(dataFeatures)
 
-testDataset = testDataset.batch(1)
+testDataset = testDataset.batch(32)
 testIterator = testDataset.make_initializable_iterator()
 next_testFeat = testIterator.get_next()
 
@@ -114,13 +113,14 @@ keepProb = tf.placeholder(tf.float32)
 NUM_CLASSES = int(np.size(labels,axis=1))
 print(NUM_CLASSES)
 
+batchSize = 32
 epoch_num = 1
 
 finalPreds = []
 
 ### UNFREEZE MODEL ###
 
-frozen_graph="./savedModels/myFrozenModel.pb"
+frozen_graph="./savedModelsWav/myFrozenModel.pb"
 with tf.gfile.GFile(frozen_graph, "rb") as f:
     restored_graph_def = tf.GraphDef()
     restored_graph_def.ParseFromString(f.read())
@@ -134,39 +134,50 @@ with tf.Graph().as_default() as graph:
         )
 
 
-for op in graph.get_operations():
-    print(op.name)
+# for op in graph.get_operations():
+#     print(op.name)
 
 preds = graph.get_tensor_by_name("out/BiasAdd:0")
-next_feat_pl = graph.get_tensor_by_name("inputFeatures:0")
+next_feat_pl = graph.get_tensor_by_name("next_feat_pl:0")
 keepProb = graph.get_tensor_by_name("keepProb:0")
 
 sessInt = tf.Session()
+idx1Test = 0
+idx2Test = 0
 
 with tf.Session(graph=graph) as sess:
-    for epoch in range(0,epoch_num):
-        sessInt.run(testIterator.initializer,
-        feed_dict={features_placeholder: features})
+	for epoch in range(0,epoch_num):
+		sessInt.run(testIterator.initializer,
+		feed_dict={features_placeholder: features})
 
-        while True:
-            try:
-                next_feat = sessInt.run(next_testElement)
+		while True:
+			try:
+				#next_feat = sessInt.run(next_testElement)
+
+				next_feat = np.empty((0))
+				#org_feat = np.empty((0))
+				next_label = np.empty((0))
+				for n in range(0,batchSize):
+					next_feat = np.concatenate((next_feat,features[idx1Test,:]),axis=0)
+					# 					#print(next_label.shape)
+					idx1Test +=1
+					idx2Test +=1
+
+				next_feat = np.reshape(next_feat,[-1,features.shape[1]])
+				fetches_test = [preds]
+				feed_dict_test = {next_feat_pl: next_feat,keepProb:1.0}
+
+				# running the traning optimizer
+				res_test = sess.run(fetches=fetches_test, feed_dict=feed_dict_test)
 
 
-                fetches_test = [preds]
-                feed_dict_test = {next_feat_pl: next_feat,keepProb:1.0}
+				finalPreds.append(res_test[0])
 
-                # running the traning optimizer
-                res_test = sess.run(fetches=fetches_test, feed_dict=feed_dict_test)
-
-
-                finalPreds.append(res_test[0])
-
-            except tf.errors.OutOfRangeError:
-                #print('End of epoch')
-                #plt.imshow(res_test[0])
-                break
-finalPreds0 = np.transpose(np.asarray(finalPreds)[:,-1,:])
+			except tf.errors.OutOfRangeError:
+					#print('End of epoch')
+					#plt.imshow(res_test[0])
+				break
+				finalPreds0 = np.transpose(np.asarray(finalPreds)[:,-1,:])
 print('Training done!')
 
 

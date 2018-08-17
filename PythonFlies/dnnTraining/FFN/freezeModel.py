@@ -2,11 +2,11 @@ import tensorflow as tf
 import numpy as np
 
 
-saver = tf.train.import_meta_graph('./savedModelsWav/my_test_model9.ckpt.meta', clear_devices=True)
+saver = tf.train.import_meta_graph(tf.train.latest_checkpoint('./savedModelsWav/') + '.meta', clear_devices=True)
 graph = tf.get_default_graph()
 input_graph_def = graph.as_graph_def()
 sess = tf.Session()
-saver.restore(sess, "./savedModelsWav/my_test_model9.ckpt")
+saver.restore(sess, tf.train.latest_checkpoint('./savedModelsWav/'))
 
 tf.global_variables()
 

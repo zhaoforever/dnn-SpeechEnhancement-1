@@ -1,304 +1,308 @@
+import sys
+sys.path.append("C:/Users/Mikkel/Google Drev/Invisio/dnn-SpeechEnhancement/PythonFlies/dataProcessing/")
 import tensorflow as tf
 import FFNModelTF
 import os
-import sys
 import numpy as np
-import matplotlib.pyplot as plt
 from tensorflow.python.tools import inspect_checkpoint as chkp
-# import sounddevice as sd
-#from scipy import signal
 from scipy.io import wavfile
 import random
 import imp
-#
-tf.reset_default_graph()
-sys.path.append("C:/Users/Mikkel/ABE_Master_thesis/PythonFiles/")
+import matplotlib.pyplot as plt
 import utils
 utils = imp.reload(utils)
-#
-# slim = tf.contrib.slim
-#
+
+tf.reset_default_graph()
+
+## Hyper- and model parameters ###
+MAX_EPOCHS = 100
+BATCH_SIZE = 64
+LEARNING_RATE = 0.00001
+KEEP_PROB_TRAIN = 0.75
+KEEP_PROB_VAL = 1.0
+
+### Dataset and feature extraction parameters ###
+DATASET_SIZE_TRAIN = 500
+DATASET_SIZE_VAL = 10
+NFFT = 512
+STFT_OVERLAP = 0.75
+NUM_CLASSES = int(NFFT/2+1)
+AUDIO_dB_SPL = 60
+
+### Early stopping criteria ###
+STOP_COUNT = 10
+
+### Path to dataset ###
 dataPath = "C:/Users/s123028/dataset8_MulitTfNoise/"
-feat_root = dataPath + "TIMIT_train_feat1/"
-label_root = dataPath + "TIMIT_train_ref1/"
-#
-# #data_root = "C:/Users/s123028/realRecs/features_val"
-# #ref_root = "C:/Users/s123028/realRecs/labels_val"
-#
-batchSize = 32
-#
-# #dataPath = 'C:/Users/TobiasToft/Documents/GitHub/ABE_Master_thesis/PythonFiles/realBCMRecLP_features/'
-# #data_root = 'C:/Users/TobiasToft/Documents/GitHub/ABE_Master_thesis/PythonFiles/realBCMRecLP_features/valFeatures'
-# #ref_root = 'C:/Users/TobiasToft/Documents/GitHub/ABE_Master_thesis/PythonFiles/realBCMRecLP_features/valLabels'
-#
-# dataPath = 'C:/Users/s123028/dataset8_MulitTfNoise/'
-# data_root_Train = dataPath + 'TIMIT_train_feat1/'
-# ref_root_Train  = dataPath + 'TIMIT_train_ref1/'
-#
-data_root_Val = dataPath + 'TIMIT_val_feat/'
-ref_root_Val  = dataPath + 'TIMIT_val_ref/'
-#
+feat_root_train = dataPath + "TIMIT_train_feat1/"
+label_root_train = dataPath + "TIMIT_train_ref1/"
+
+feat_root_val = dataPath + 'TIMIT_val_feat/'
+label_root_val  = dataPath + 'TIMIT_val_ref/'
+
 trainingStats = np.load(dataPath + "trainingStats.npy")
-#
+
 featMean = trainingStats[0]
 featStd = trainingStats[1]
-#
-NUM_CLASSES = 257
-#next_feat_pl = tf.placeholder(tf.float32 ,[batchSize, frameWidth, 257, nchannels],name='next_feat_pl')
-#next_label_pl = tf.placeholder(tf.float32 ,[batchSize,
 
-next_feat_pl = tf.placeholder(tf.float32,[batchSize,NUM_CLASSES],name='next_feat_pl')
-next_label_pl=tf.placeholder(tf.float32,[batchSize,NUM_CLASSES],name='next_label_pl')
+### Model placeholders ###
+next_feat_pl = tf.placeholder(tf.float32,[None,NUM_CLASSES],name='next_feat_pl')
+next_label_pl=tf.placeholder(tf.float32,[None,NUM_CLASSES],name='next_label_pl')
 
-org_feat_pl = tf.placeholder(tf.float32 ,[batchSize,NUM_CLASSES],name='org_feat_pl')
-#
-#
 keepProb = tf.placeholder(tf.float32,name='keepProb')
-#
-preds = FFNModelTF.defineFFN(next_feat_pl,NUM_CLASSES,keepProb)
-#
-# alpha = 2.0
-# preds = (1.0/alpha*np.transpose(org_feat_pl)+alpha*preds)/alpha
 
-# Train ops
+### Model definition ###
+preds = FFNModelTF.defineFFN(next_feat_pl,NUM_CLASSES,keepProb)
+
+### Optimizer ###
 loss = tf.losses.mean_squared_error(next_label_pl,preds)
-optimizer = tf.train.AdamOptimizer(learning_rate=0.00001) #defining optimizer
+optimizer = tf.train.AdamOptimizer(learning_rate=LEARNING_RATE)
+grads_and_vars = optimizer.compute_gradients(loss)
 train_op = optimizer.minimize(loss=loss)
 
+### Summaries ###
+with tf.name_scope('performance'):
+	loss_sum_train = tf.placeholder(tf.float32,shape=None,name='loss_summary_train')
+	tf_loss_summary_train = tf.summary.scalar('loss_train', loss_sum_train)
 
+	loss_sum_val = tf.placeholder(tf.float32,shape=None,name='loss_summary_val')
+	tf_loss_summary_val = tf.summary.scalar('loss_val', loss_sum_val)
+
+performance_summaries = tf.summary.merge([tf_loss_summary_train,tf_loss_summary_val])
+
+for g,v in grads_and_vars:
+	if 'out' in v.name and 'kernel' in v.name:
+		with tf.name_scope('gradients'):
+			last_grad_norm = tf.sqrt(tf.reduce_mean(g**2))
+			gradnorm_summary = tf.summary.scalar('grad_norm',last_grad_norm)
+			break
+
+with tf.name_scope('tb_images'):
+	tb_image = tf.placeholder(tf.float32,shape=None,name='tb_image')
+	image_summary_op = tf.summary.image('images',tb_image, 1)
+
+### Model variable initializer ###
 train_loss = []
 train_loss_mean = []
 val_loss = []
 val_loss_mean = []
-val_loss_best = 100
+val_loss_best = 1000 # large initial value
 bestCount = 0
-stopCount = 20
 trainingBool = True
 validationBool = True
-#
-maxEpochs = 100
-#
+
 epochCount = 0
-allFilesTrain = os.listdir(feat_root)
-random.shuffle(allFilesTrain)
-allFilesTrain = allFilesTrain[0:10]
-#
-allFilesVal = os.listdir(label_root)
-random.shuffle(allFilesVal)
-allFilesVal = allFilesVal[0:1]
-#
-#random.shuffle(allFiles)
-lossSum = tf.placeholder(tf.float32,shape=None,name='loss_summary')
-tf_loss_summary = tf.summary.scalar('lossSum', lossSum)
+allFilesTrain = os.listdir(feat_root_train)
+allFilesTrain = allFilesTrain[0:DATASET_SIZE_TRAIN]
+
+allFilesVal = os.listdir(feat_root_val)
+allFilesVal = allFilesVal[0:DATASET_SIZE_VAL]
+
+iter = 0
+finalPreds = np.empty((0,NUM_CLASSES))
+
+allEventFiles = os.listdir('./logs/')
+for file in allEventFiles:
+	os.remove('./logs/'+file)
 
 print('Training...')
 with tf.Session() as sess:
+	#os.remove('./logs/')
 	writer = tf.summary.FileWriter('logs', sess.graph)
 	sess.run(tf.global_variables_initializer())
-# 	model_variables = slim.get_model_variables()
 	saver = tf.train.Saver()
-	for epoch in range(0,maxEpochs):
+	for epoch in range(0,MAX_EPOCHS):
+		iter = 0
 		if trainingBool:
 			train_loss_mean = []
 			val_loss_mean = []
-	#
+
 			random.shuffle(allFilesTrain)
 			#random.shuffle(allFilesVal)
 			for file in allFilesTrain:
-				filePathFeat = feat_root + '/' + file
-				filePathLabel = label_root + '/' + file
-	#
-				if epochCount == maxEpochs:
+				filePathFeat = feat_root_train + '/' + file
+				filePathLabel = label_root_train + '/' + file
+
+				if epochCount == MAX_EPOCHS:
 					break
-	#
+
 				x, fs = utils.wavToSamples(filePathFeat)
-				x = utils.adjustSNR(x,60)
+				x = utils.adjustSNR(x,AUDIO_dB_SPL)
 
 				xRef, fs = utils.wavToSamples(filePathLabel.replace('feat','ref'))
-				xRef = utils.adjustSNR(xRef,60)
-	# 			#x = x[int(fs*1):int(fs*30)]
-	# 			#xRef = xRef[int(fs*1):int(fs*30)]
-	#
-	#			features, X_phi =  utils.featureExtractMag512(x,fs,dataPath)
-				#_, _, features = signal.stft(x, fs, nperseg=512,noverlap=int(512*0.75),return_onesided=True)
-	#
-				nfft = 512
-				features,X_phi,_,_ = utils.STFT(x,fs,nfft,int(nfft*0.75))
+				xRef = utils.adjustSNR(xRef,AUDIO_dB_SPL)
+
+				features,X_phi,_,_ = utils.STFT(x,fs,NFFT,int(NFFT*STFT_OVERLAP))
 				features = np.float32(features)
-				#features = features[:150,:]
 				features = np.log10(features + 1e-7)
 				features = features - featMean
 				features = features/featStd
-	#
+
 				features = np.transpose(features)
 				features.shape
 
-				labels,L_phi,_,_ = utils.STFT(xRef,fs,nfft,int(nfft*0.75))
+				labels,L_phi,_,_ = utils.STFT(xRef,fs,NFFT,int(NFFT*STFT_OVERLAP))
 				labels = np.float32(labels)
-				#features = features[:150,:]
 				labels = np.log10(labels + 1e-7)
 				labels = labels - featMean
 				labels = labels/featStd
-		#
+
 				labels = np.transpose(labels)
-	# 			#labels, L_phi =  utils.featureExtractMag512(xRef,fs,dataPath)
-	# 			_, _, labels = signal.stft(xRef, fs, nperseg=512,noverlap=int(512*0.75),return_onesided=True)
-	#
-	# 			labels = np.abs(labels)
-	# 			labels = np.float32(labels)
-	# 			labels = np.log10(labels + 1e-7)
-	# 			labels = labels - featMean
-	# 			labels = labels/featStd
-	#
-	# 			labels = np.transpose(labels)
-	#
-	# 			features = np.concatenate((np.repeat(features[:1,:],frameWidth-1,axis=0),features),axis=0)
-	#
-	#
+
 				idx1Train = 0
-				idx2Train = idx1Train+batchSize
-	#
-	#
-				while ((idx1Train+batchSize) <= features.shape[0]) and (trainingBool):
-	#
-	#
+				idx2Train = idx1Train+BATCH_SIZE
+
+
+				while ((idx1Train+BATCH_SIZE) <= features.shape[0]) and (trainingBool):
+
+
 					## Training:
 					next_feat = np.empty((0))
-					#org_feat = np.empty((0))
 					next_label = np.empty((0))
-					for n in range(0,batchSize):
+					for n in range(0,BATCH_SIZE):
 						next_feat = np.concatenate((next_feat,features[idx1Train,:]),axis=0)
-						#print(next_feat.shape)
-						#org_feat = np.concatenate((org_feat,features[idx2Train,:]),axis=0)
-	#
+
 						next_label = np.concatenate((next_label,labels[idx1Train,:]),axis=0)
-						#print(next_label.shape)
 						idx1Train +=1
 						idx2Train +=1
-	#
+
 					next_feat = np.reshape(next_feat,[-1,features.shape[1]])
-	# 				org_feat = np.reshape(org_feat,[-1,features.shape[1]])
 					next_label = np.reshape(next_label,[-1,labels.shape[1]])
-	#
-	#
-					#print(idx2Train)
-					fetches_train = [train_op,loss]
-					feed_dict_train = {next_feat_pl: next_feat, next_label_pl: next_label, keepProb: 0.75}
-	#
-					# running the traning optimizer
-					res_train = sess.run(fetches=fetches_train,
-					feed_dict=feed_dict_train)
-	#
+
+
+					if iter == 0:
+						fetches_train = [train_op,loss,gradnorm_summary]
+						feed_dict_train = {next_feat_pl: next_feat, next_label_pl: next_label, keepProb: KEEP_PROB_TRAIN}
+
+						# running the traning optimizer
+						res_train = sess.run(fetches=fetches_train,
+						feed_dict=feed_dict_train)
+
+						writer.add_summary(res_train[2], epoch)
+					else:
+						fetches_train = [train_op,loss]
+						feed_dict_train = {next_feat_pl: next_feat, next_label_pl: next_label, keepProb: KEEP_PROB_TRAIN}
+
+						# running the traning optimizer
+						res_train = sess.run(fetches=fetches_train,
+						feed_dict=feed_dict_train)
+
 					train_loss.append(res_train[1])
-	#
+					iter =+ 1
+
 				train_loss_mean.append(np.mean(train_loss))
 				train_loss = []
 	 		#### Validation ####
 			for file in allFilesVal:
-				filePath = data_root_Val + '/' + file
-				filePath2 = ref_root_Val + '/' + file
-	#
-				x, fs = utils.wavToSamples(filePathFeat)
-				x = utils.adjustSNR(x,60)
+				filePathFeat_val = feat_root_val + '/' + file
+				filePathRef_val = label_root_val + '/' + file
 
-				xRef, fs = utils.wavToSamples(filePathLabel.replace('feat','ref'))
-				xRef = utils.adjustSNR(xRef,60)
-	#
-				features,X_phi,_,_ = utils.STFT(x,fs,nfft,int(nfft*0.75))
-				features = np.float32(features)
-				#features = features[:150,:]
-				features = np.log10(features + 1e-7)
-				features = features - featMean
-				features = features/featStd
-				#
-				features = np.transpose(features)
-				features.shape
+				x, fs = utils.wavToSamples(filePathFeat_val)
+				x = utils.adjustSNR(x,AUDIO_dB_SPL)
 
-				labels,L_phi,_,_ = utils.STFT(xRef,fs,nfft,int(nfft*0.75))
-				labels = np.float32(labels)
-				#features = features[:150,:]
-				labels = np.log10(labels + 1e-7)
-				labels = labels - featMean
-				labels = labels/featStd
-				#
-				labels = np.transpose(labels)
-	#
+				xRef, fs = utils.wavToSamples(filePathRef_val.replace('feat','ref'))
+				xRef = utils.adjustSNR(xRef,AUDIO_dB_SPL)
+
+				features_val,X_phi,_,_ = utils.STFT(x,fs,NFFT,int(NFFT*STFT_OVERLAP))
+				features_val = np.float32(features_val)
+				features_val = np.log10(features_val + 1e-7)
+				features_val = features_val - featMean
+				features_val = features_val/featStd
+
+				features_val = np.transpose(features_val)
+
+				labels_val,L_phi,_,_ = utils.STFT(xRef,fs,NFFT,int(NFFT*STFT_OVERLAP))
+				labels_val = np.float32(labels_val)
+				labels_val = np.log10(labels_val + 1e-7)
+				labels_val = labels_val - featMean
+				labels_val = labels_val/featStd
+
+				labels_val = np.transpose(labels_val)
+
 				idx1Val = 0
-				idx2Val = idx1Val+batchSize
-	#
-	#
-				while ((idx2Val+batchSize) <= features.shape[0]) and (validationBool):
-	#
-	#
+				idx2Val = idx1Val+BATCH_SIZE
+
+
+				while ((idx2Val+BATCH_SIZE) <= features_val.shape[0]) and (validationBool):
+
+
 					## Validating:
 					next_feat = np.empty((0))
-					#org_feat = np.empty((0))
 					next_label = np.empty((0))
-					for n in range(0,batchSize):
-						next_feat = np.concatenate((next_feat,features[idx1Val,:]),axis=0)
-	# 					#print(next_feat.shape)
-						#org_feat = np.concatenate((org_feat,features[idx2Val,:]),axis=0)
-	#
-						next_label = np.concatenate((next_label,labels[idx1Val,:]),axis=0)
-	# 					#print(next_label.shape)
+					for n in range(0,BATCH_SIZE):
+						next_feat = np.concatenate((next_feat,features_val[idx1Val,:]),axis=0)
+
+						next_label = np.concatenate((next_label,labels_val[idx1Val,:]),axis=0)
 						idx1Val +=1
 						idx2Val +=1
-	#
-					next_feat = np.reshape(next_feat,[-1,features.shape[1]])
-	# 				org_feat = np.reshape(org_feat,[-1,features.shape[1]])
-					next_label = np.reshape(next_label,[-1,labels.shape[1]])
-	#
-	#
+
+					next_feat = np.reshape(next_feat,[-1,features_val.shape[1]])
+					next_label = np.reshape(next_label,[-1,labels_val.shape[1]])
 
 
-					fetches_Val = [loss]
-					feed_dict_Val = {next_feat_pl: next_feat, next_label_pl: next_label, keepProb: 1.0}
-	#
+
+
+					fetches_Val = [loss,preds]
+					feed_dict_Val = {next_feat_pl: next_feat, next_label_pl: next_label, keepProb: KEEP_PROB_VAL}
+
 
 					# running the validating run
 					res_Val = sess.run(fetches=fetches_Val,
 					feed_dict=feed_dict_Val)
-	#
+
 					val_loss.append(res_Val[0])
-	#
+					finalPreds = np.concatenate((finalPreds,res_Val[1]),axis=0)
 				val_loss_mean.append(np.mean(val_loss))
 				val_loss = []
+
+
 			print('End of epoch: ',epoch+1)
 			epochCount += 1
-	#
+
+			### End of epoch rutines ###
 			train_loss_mean = np.mean(train_loss_mean)
 			val_loss_mean = np.mean(val_loss_mean)
 
 			print("Training loss: ", train_loss_mean, " Validation loss: ", val_loss_mean)
-			#summary = sess.run(first_summary)
-			summ = sess.run(tf_loss_summary,feed_dict={lossSum:val_loss_mean})
+
+			## Loss summary to
+			summ = sess.run(performance_summaries,feed_dict={loss_sum_train: train_loss_mean, loss_sum_val: val_loss_mean})
 			writer.add_summary(summ, epoch)
-	#
+
+
+			finalPreds0 = np.flipud(finalPreds.T)
+			finalPreds = np.empty((0,NUM_CLASSES))
+			image_summary = sess.run(image_summary_op, feed_dict={tb_image: np.reshape(finalPreds0, [-1, finalPreds0.shape[0],finalPreds0.shape[1], 1])})
+			writer.add_summary(image_summary, epoch)
+
+			### Early stopping ###
 			if val_loss_mean < val_loss_best:
-	#
+
 				val_loss_best = val_loss_mean
-	#
+
 				trainingBool = True
 				validationBool = True
-	#
+
 				bestCount = 0
-	#
+
 				# Save model
 				saveStr = './savedModelsWav/my_test_model' + str(epoch) + '.ckpt'
 				saver.save(sess, saveStr)
-	#
-			elif bestCount < stopCount:
+
+			elif bestCount < STOP_COUNT:
 				trainingBool = True
 				validationBool = True
-	#
+
 				bestCount += 1
 			else:
 				trainingBool = False
 				validationBool = False
-	#
-	#
 
-	#
-	#
 	print('Training done!')
-# #
+
+plt.pcolormesh(features.T)
+#plt.ylim((0, 1000))
+plt.title('STFT Magnitude')
+plt.ylabel('Frequency [Hz]')
+plt.xlabel('Time [sec]')
+plt.show()

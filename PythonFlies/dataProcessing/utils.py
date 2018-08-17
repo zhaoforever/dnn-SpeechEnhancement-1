@@ -4,6 +4,12 @@ import numpy as np
 import os
 from scipy import signal
 
+def adjustSNR(x,dB):
+	x = x/np.max(np.abs(x))
+	xRms = np.sqrt(np.mean(np.square(x)))
+	x = x*10**((dB-20*np.log10(xRms/2e-5))/20);
+	return x
+
 def muLawCompression(wavSamples):
 	mu = 255
 
