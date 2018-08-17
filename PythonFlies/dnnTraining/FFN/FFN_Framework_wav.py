@@ -1,5 +1,6 @@
 import sys
-sys.path.append("C:/Users/Mikkel/Google Drev/Invisio/dnn-SpeechEnhancement/PythonFlies/dataProcessing/")
+#sys.path.append("C:/Users/Mikkel/Google Drev/Invisio/dnn-SpeechEnhancement/PythonFlies/dataProcessing/")
+sys.path.append("C:/Users/TobiasToft/Documents/GitHub/dnn-SpeechEnhancement/PythonFlies/dataProcessing/")
 import tensorflow as tf
 import FFNModelTF
 import os
@@ -33,7 +34,8 @@ AUDIO_dB_SPL = 60
 STOP_COUNT = 10
 
 ### Path to dataset ###
-dataPath = "C:/Users/s123028/dataset8_MulitTfNoise/"
+#dataPath = "C:/Users/s123028/dataset8_MulitTfNoise/"
+dataPath = "C:/Users/TobiasToft/Documents/dataset8_MulitTfNoise/"
 feat_root_train = dataPath + "TIMIT_train_feat1/"
 label_root_train = dataPath + "TIMIT_train_ref1/"
 
