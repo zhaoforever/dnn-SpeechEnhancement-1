@@ -1,6 +1,6 @@
 import sys
-#sys.path.append("C:/Users/Mikkel/Google Drev/Invisio/dnn-SpeechEnhancement/PythonFlies/dataProcessing/")
-sys.path.append("C:/Users/TobiasToft/Documents/GitHub/dnn-SpeechEnhancement/PythonFlies/dataProcessing/")
+sys.path.append("C:/Users/Mikkel/Google Drev/Invisio/dnn-SpeechEnhancement/PythonFlies/dataProcessing/")
+#sys.path.append("C:/Users/TobiasToft/Documents/GitHub/dnn-SpeechEnhancement/PythonFlies/dataProcessing/")
 import tensorflow as tf
 import FFNModelTF
 import os
@@ -16,9 +16,9 @@ utils = imp.reload(utils)
 tf.reset_default_graph()
 
 ## Hyper- and model parameters ###
-MAX_EPOCHS = 100
+MAX_EPOCHS = 10
 BATCH_SIZE = 64
-LEARNING_RATE = 0.00001
+LEARNING_RATE = 0.0001
 KEEP_PROB_TRAIN = 0.75
 KEEP_PROB_VAL = 1.0
 
@@ -34,8 +34,8 @@ AUDIO_dB_SPL = 60
 STOP_COUNT = 10
 
 ### Path to dataset ###
-#dataPath = "C:/Users/s123028/dataset8_MulitTfNoise/"
-dataPath = "C:/Users/TobiasToft/Documents/dataset8_MultiTfNoise/"
+dataPath = "C:/Users/s123028/dataset8_MulitTfNoise/"
+#dataPath = "C:/Users/TobiasToft/Documents/dataset8_MultiTfNoise/"
 feat_root_train = dataPath + "TIMIT_train_feat1/"
 label_root_train = dataPath + "TIMIT_train_ref1/"
 
@@ -301,13 +301,3 @@ with tf.Session() as sess:
 				validationBool = False
 
 	print('Training done!')
-
-
-
-
-plt.pcolormesh(features.T)
-#plt.ylim((0, 1000))
-plt.title('STFT Magnitude')
-plt.ylabel('Frequency [Hz]')
-plt.xlabel('Time [sec]')
-plt.show()
