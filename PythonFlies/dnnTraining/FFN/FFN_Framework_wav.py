@@ -23,8 +23,8 @@ KEEP_PROB_TRAIN = 0.75
 KEEP_PROB_VAL = 1.0
 
 ### Dataset and feature extraction parameters ###
-DATASET_SIZE_TRAIN = 500
-DATASET_SIZE_VAL = 10
+DATASET_SIZE_TRAIN = 20
+DATASET_SIZE_VAL = 2
 NFFT = 512
 STFT_OVERLAP = 0.75
 NUM_CLASSES = int(NFFT/2+1)
@@ -301,6 +301,9 @@ with tf.Session() as sess:
 				validationBool = False
 
 	print('Training done!')
+
+
+
 
 plt.pcolormesh(features.T)
 #plt.ylim((0, 1000))
