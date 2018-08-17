@@ -2,48 +2,27 @@ import os
 import numpy as np
 import utils
 
+def FeatureExtraction(filePathFeat,AUDIO_dB_SPL,NFFT,STFT_OVERLAP,numBin,featMean,featStd):
+	#  Feature Extraction function
+	#   filePathFeat   : filepath name [string]
+	#   AUDIO_dB_SPL   : dB SPL value to adjust SNR level
+	#   NFFT           : Number of frequency bins
+	#   STFT_OVERLAP   : frame overlab [0 - 1]
+	#   numBin         : number of frequency bins you want to use. [0 Hz - ..]
+    #   featMean       : features mean value for standardization
+    #   featStd        : features standard deviation value for standardization
 
-### Dataset and feature extraction parameters ###
-DATASET_SIZE_TRAIN = 5
-DATASET_SIZE_VAL = 2
-NFFT = 512
-STFT_OVERLAP = 0.75
-NUM_CLASSES = int(NFFT/2+1)
-AUDIO_dB_SPL = 60
+    x, fs = utils.wavToSamples(filePathFeat)
+    x = utils.adjustSNR(x,AUDIO_dB_SPL)
 
+    features,feature_phi,_,_ = utils.STFT(x,fs,NFFT,int(NFFT*STFT_OVERLAP))
+    features = np.float32(features)
+    features = np.log10(features + 1e-7)
 
-### Path to dataset ###
-dataPath = "C:/Users/TobiasToft/Documents/dataset8_MultiTfNoise/"
-feat_root_train = dataPath + "TIMIT_train_feat1/"
+    features = features - featMean
+    features = features/featStd
+    features = np.transpose(features)
 
-trainingStats = np.load(dataPath + "trainingStats.npy")
+    features = features[:,0:numBin]
 
-featMean = trainingStats[0]
-featStd = trainingStats[1]
-
-
-allFilesTrain = os.listdir(feat_root_train)
-allFilesTrain = allFilesTrain[0:DATASET_SIZE_TRAIN]
-
-for file in allFilesTrain:
-	filePathFeat = feat_root_train + '/' + file
-    features = FeatureExtraction()
-    print(features.shape)
-
-
-
-
-
-def FeatureExtraction(filePathFeat,AUDIO_dB_SPL,NFFT,STFT_OVERLAP,featMean,featStd):
-	x, fs = utils.wavToSamples(filePathFeat)
-	x = utils.adjustSNR(x,AUDIO_dB_SPL)
-
-	features,X_phi,_,_ = utils.STFT(x,fs,NFFT,int(NFFT*STFT_OVERLAP))
-	features = np.float32(features)
-	features = np.log10(features + 1e-7)
-	features = features - featMean
-	features = features/featStd
-
-	features = np.transpose(features)
-
-return features
+    return features,feature_phi
