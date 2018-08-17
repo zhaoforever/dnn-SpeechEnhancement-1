@@ -35,7 +35,7 @@ STOP_COUNT = 10
 
 ### Path to dataset ###
 #dataPath = "C:/Users/s123028/dataset8_MulitTfNoise/"
-dataPath = "C:/Users/TobiasToft/Documents/dataset8_MulitTfNoise/"
+dataPath = "C:/Users/TobiasToft/Documents/dataset8_MultiTfNoise/"
 feat_root_train = dataPath + "TIMIT_train_feat1/"
 label_root_train = dataPath + "TIMIT_train_ref1/"
 

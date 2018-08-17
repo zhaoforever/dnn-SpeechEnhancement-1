@@ -23,7 +23,7 @@ def hypTanCompression(data):
 	# Hyperbolic tangent compression
 	Q = 1.0
 	C = 0.5
-	return Q*((1.0-np.exp(-C*data))/(1.0+np.exp(-C*data)))
+	return Q * ((1.0-np.exp(-C*data))/(1.0+np.exp(-C*data)))
 
 def hypTanCompression_inv(data):
 	# Inverte Hyperbolic tangent compression
@@ -39,23 +39,23 @@ def wavToSamples(wav_file):
 
 	return wav_data, fs
 
-def STFT(x,fs,wL):
+def STFT(x,fs,wL,nOverlap):
 
-	f, t, Zxx = signal.stft(x, fs, nperseg=wL,noverlap=wL//2,return_onesided=True)
+	f, t, Zxx = signal.stft(x, fs, nperseg=wL,noverlap=nOverlap,return_onesided=True)
 
 	Zxx_abs = np.abs(Zxx)
 	Zxx_phi = np.arctan2(Zxx.imag,Zxx.real)
 
 	return Zxx_abs, Zxx_phi, t, f
 
-def ISTFT(X_abs,X_phi,fs):
+def ISTFT(X_abs,X_phi,fs,nfft,nOverlap):
 
 	X_re = X_abs*np.cos(X_phi)
 	X_im = X_abs*np.sin(X_phi)
 
 	X_complex = X_re+1j*X_im
 
-	_, xrec = signal.istft(X_complex, fs,input_onesided=True)
+	_, xrec = signal.istft(X_complex, fs, nperseg=nfft,noverlap=nOverlap)
 
 	return xrec
 
@@ -213,3 +213,46 @@ def dispBound(data):
 	print("Mean value: ",np.mean(data))
 	print("Max value: ",np.max(data))
 	return
+
+def featureExtractMag512(x,fs):
+
+
+	nfft = 512
+	X_abs,X_phi,_,_ = STFT(x,fs,nfft,int(nfft*0.75))
+
+	# Feature normalization
+	datasetPath = "C:/Users/s123028/dataset7_multiBcmTf/"
+	trainingStats = np.load(datasetPath + "trainingStats.npy")
+
+	featMean = trainingStats[0]
+	featStd = trainingStats[1]
+
+	X_abs = np.log10(X_abs + 1e-7)
+	featMean = np.mean(X_abs)
+	X_abs = X_abs - featMean
+	featStd = np.std(X_abs)
+	X_abs = X_abs/featStd
+
+	X_abs = np.transpose(X_abs)
+
+	X_abs = np.float32(X_abs)
+
+	return X_abs, X_phi
+
+def featureReconstructMag512(xPreds,X_phi,fs):
+
+	datasetPath = "C:/Users/s123028/dataset7_multiBcmTf/"
+	trainingStats = np.load(datasetPath + "trainingStats.npy")
+
+	featMean = trainingStats[0]
+	featStd = trainingStats[1]
+
+	finalPreds = xPreds
+
+	finalPreds1 = finalPreds * featStd
+	finalPreds2 = finalPreds1 + featMean
+	finalPreds3 = 10**(finalPreds2)-1e-7
+	y = ISTFT(finalPreds3,X_phi,fs,512,int(512*0.75))
+	y = y/np.max(np.abs(y))
+
+	return y
