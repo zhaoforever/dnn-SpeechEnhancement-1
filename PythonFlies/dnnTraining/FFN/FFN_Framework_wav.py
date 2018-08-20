@@ -182,8 +182,8 @@ with tf.Session() as sess:
 				filePathFeat_val = feat_root_val + '/' + file
 				filePathRef_val = label_root_val + '/' + file
 
-				features_val,features_val_phi = FeatureExtraction.FeatureExtraction(filePathFeat,AUDIO_dB_SPL,NFFT,STFT_OVERLAP,NUMBER_BINS,featMean,featStd)
-				labels_val,labels_val_phi = FeatureExtraction.FeatureExtraction(filePathLabel.replace('feat','ref'),AUDIO_dB_SPL,NFFT,STFT_OVERLAP,NUMBER_BINS,featMean,featStd)
+				features_val,features_val_phi = FeatureExtraction.FeatureExtraction(filePathFeat_val,AUDIO_dB_SPL,NFFT,STFT_OVERLAP,NUMBER_BINS,featMean,featStd)
+				labels_val,labels_val_phi = FeatureExtraction.FeatureExtraction(filePathRef_val.replace('feat','ref'),AUDIO_dB_SPL,NFFT,STFT_OVERLAP,NUMBER_BINS,featMean,featStd)
 
 				idx1Val = 0
 				idx2Val = idx1Val+BATCH_SIZE
