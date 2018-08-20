@@ -6,7 +6,9 @@ import matplotlib.pyplot as plt
 import utils
 
 
-def MCC_plot(dataPath_true,dataPath_pred,NFFT,STFT_OVERLAP):
+def MCC_calc(dataPath_true,dataPath_pred,NFFT):
+    STFT_OVERLAP = 0.5
+
     feat_true, fs = utils.wavToSamples(dataPath_true)
     feat_true,_,_,_ = utils.STFT(feat_true,fs,NFFT,int(NFFT*STFT_OVERLAP))
     feat_true = np.float32(feat_true)
@@ -29,6 +31,7 @@ def MCC_plot(dataPath_true,dataPath_pred,NFFT,STFT_OVERLAP):
     xx_pred = np.divide(xx_pred,denom_pred)
 
     segMCC = np.sum(np.multiply(xx_true,xx_pred),1)
+    segMCC = segMCC.reshape(feat_pred.shape[0],1)
     MCC = np.mean(segMCC)
 
     freq = np.linspace(0,fs/2,np.size(segMCC,0));
