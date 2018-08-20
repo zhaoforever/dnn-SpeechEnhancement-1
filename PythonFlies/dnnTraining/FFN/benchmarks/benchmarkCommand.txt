@@ -1,0 +1,6 @@
+benchmark_model --graph=C:\Users\Mikkel\Desktop\dnn-SpeechEnhancement\PythonFlies\dnnTraining\FFN\savedModelsWav\myFrozenModel.pb --input_layer="fc1/MatMul","next_feat_pl","keepProb" --input_layer_shape="128,2048:32,128:1" --input_layer_type="float,float,float" --output_layer="out/BiasAdd:0" --show_run_order=false --show_time=true --show_memory=true --show_summary=true --show_flops=true
+
+
+benchmark_model --graph=C:\Users\Mikkel\Desktop\dnn-SpeechEnhancement\PythonFlies\dnnTraining\FFN\savedModelsWav\myFrozenModel.pb --show_flops --input_layer=next_feat_pl,keepProb --input_layer_type=float,float --input_layer_shape=-1,257: --output_layer=out/BiasAdd
+
+https://joe-antognini.github.io/machine-learning/build-windows-tf

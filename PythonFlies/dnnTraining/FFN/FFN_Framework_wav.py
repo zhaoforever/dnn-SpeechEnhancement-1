@@ -1,5 +1,5 @@
 import sys
-sys.path.append("C:/Users/Mikkel/Google Drev/Invisio/dnn-SpeechEnhancement/PythonFlies/dataProcessing/")
+sys.path.append("C:/Users/Mikkel/Desktop/dnn-SpeechEnhancement/PythonFlies/dataProcessing/")
 #sys.path.append("C:/Users/TobiasToft/Documents/GitHub/dnn-SpeechEnhancement/PythonFlies/dataProcessing/")
 import tensorflow as tf
 import FFNModelTF
@@ -27,7 +27,7 @@ KEEP_PROB_VAL = 1.0
 DATASET_SIZE_TRAIN = 20
 DATASET_SIZE_VAL = 2
 NFFT = 512
-NUMBER_BINS = 128
+NUMBER_BINS = 257
 STFT_OVERLAP = 0.75
 #NUM_CLASSES = int(NFFT/2+1)
 NUM_CLASSES = NUMBER_BINS
@@ -209,7 +209,7 @@ with tf.Session() as sess:
 
 
 					fetches_Val = [loss,preds]
-					feed_dict_Val = {next_feat_pl: next_feat, next_label_pl: next_label, keepProb: KEEP_PROB_VAL}
+					feed_dict_Val = {next_feat_pl: next_feat, next_label_pl: next_label, keepProb: 1.0}
 
 
 					# running the validating run
