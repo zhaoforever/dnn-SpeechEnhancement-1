@@ -89,4 +89,19 @@ C:/Users/TobiasToft/Documents/dataset8_MultiTfNoise/TIMIT_train_ref1/331_ref.wav
  C:/Users/TobiasToft/Desktop/AudioFilesTest/TIMIT_ref/331_ref.wav	 C:/Users/TobiasToft/Desktop/AudioFilesTest/TIMIT_feat/331_feat.wav	 SQValue=2.948	 2.948	 0.000	 0	 16000	0.0000
  C:/Users/TobiasToft/Desktop/AudioFilesTest/TIMIT_ref/332_ref.wav	 C:/Users/TobiasToft/Desktop/AudioFilesTest/TIMIT_feat/332_feat.wav	 SQValue=3.055	 3.055	 0.000	 0	 16000	0.0000
  C:/Users/TobiasToft/Desktop/AudioFilesTest/TIMIT_ref/333_ref.wav	 C:/Users/TobiasToft/Desktop/AudioFilesTest/TIMIT_feat/333_feat.wav	 SQValue=2.874	 2.874	 0.000	 0	 16000	0.0000
+ C:/Users/TobiasToft/Desktop/AudioFilesTest/TIMIT_ref/331_ref.wav	 C:/Users/TobiasToft/Desktop/AudioFilesTest/TIMIT_feat/331_feat.wav	 SQValue=2.948	 2.948	 0.000	 0	 16000	0.0000
+ C:/Users/TobiasToft/Desktop/AudioFilesTest/TIMIT_ref/332_ref.wav	 C:/Users/TobiasToft/Desktop/AudioFilesTest/TIMIT_feat/332_feat.wav	 SQValue=3.055	 3.055	 0.000	 0	 16000	0.0000
+ C:/Users/TobiasToft/Desktop/AudioFilesTest/TIMIT_ref/333_ref.wav	 C:/Users/TobiasToft/Desktop/AudioFilesTest/TIMIT_feat/333_feat.wav	 SQValue=2.874	 2.874	 0.000	 0	 16000	0.0000
+ C:/Users/TobiasToft/Desktop/AudioFilesTest/TIMIT_ref/331_ref.wav	 C:/Users/TobiasToft/Desktop/AudioFilesTest/TIMIT_feat/331_feat.wav	 SQValue=2.948	 2.948	 0.000	 0	 16000	0.0000
+ C:/Users/TobiasToft/Desktop/AudioFilesTest/TIMIT_ref/332_ref.wav	 C:/Users/TobiasToft/Desktop/AudioFilesTest/TIMIT_feat/332_feat.wav	 SQValue=3.055	 3.055	 0.000	 0	 16000	0.0000
+ C:/Users/TobiasToft/Desktop/AudioFilesTest/TIMIT_ref/333_ref.wav	 C:/Users/TobiasToft/Desktop/AudioFilesTest/TIMIT_feat/333_feat.wav	 SQValue=2.874	 2.874	 0.000	 0	 16000	0.0000
+ C:/Users/TobiasToft/Desktop/AudioFilesTest/TIMIT_ref/331_ref.wav	 C:/Users/TobiasToft/Desktop/AudioFilesTest/TIMIT_feat/331_feat.wav	 SQValue=2.948	 2.948	 0.000	 0	 16000	0.0000
+ C:/Users/TobiasToft/Desktop/AudioFilesTest/TIMIT_ref/332_ref.wav	 C:/Users/TobiasToft/Desktop/AudioFilesTest/TIMIT_feat/332_feat.wav	 SQValue=3.055	 3.055	 0.000	 0	 16000	0.0000
+ C:/Users/TobiasToft/Desktop/AudioFilesTest/TIMIT_ref/333_ref.wav	 C:/Users/TobiasToft/Desktop/AudioFilesTest/TIMIT_feat/333_feat.wav	 SQValue=2.874	 2.874	 0.000	 0	 16000	0.0000
+ C:/Users/TobiasToft/Desktop/AudioFilesTest/TIMIT_ref/331_ref.wav	 C:/Users/TobiasToft/Desktop/AudioFilesTest/TIMIT_feat/331_feat.wav	 SQValue=2.948	 2.948	 0.000	 0	 16000	0.0000
+ C:/Users/TobiasToft/Desktop/AudioFilesTest/TIMIT_ref/332_ref.wav	 C:/Users/TobiasToft/Desktop/AudioFilesTest/TIMIT_feat/332_feat.wav	 SQValue=3.055	 3.055	 0.000	 0	 16000	0.0000
+ C:/Users/TobiasToft/Desktop/AudioFilesTest/TIMIT_ref/333_ref.wav	 C:/Users/TobiasToft/Desktop/AudioFilesTest/TIMIT_feat/333_feat.wav	 SQValue=2.874	 2.874	 0.000	 0	 16000	0.0000
+ C:/Users/TobiasToft/Desktop/AudioFilesTest/TIMIT_ref/331_ref.wav	 C:/Users/TobiasToft/Desktop/AudioFilesTest/TIMIT_feat/331_feat.wav	 SQValue=2.948	 2.948	 0.000	 0	 16000	0.0000
+ C:/Users/TobiasToft/Desktop/AudioFilesTest/TIMIT_ref/332_ref.wav	 C:/Users/TobiasToft/Desktop/AudioFilesTest/TIMIT_feat/332_feat.wav	 SQValue=3.055	 3.055	 0.000	 0	 16000	0.0000
+ C:/Users/TobiasToft/Desktop/AudioFilesTest/TIMIT_ref/333_ref.wav	 C:/Users/TobiasToft/Desktop/AudioFilesTest/TIMIT_feat/333_feat.wav	 SQValue=2.874	 2.874	 0.000	 0	 16000	0.0000
  

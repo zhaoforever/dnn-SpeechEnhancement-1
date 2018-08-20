@@ -50,9 +50,10 @@ print("PESQ Average: " + str(pesqScore_mean))
 
 ### Figures ###
 
-plt.semilogx(freq,segMCC_mean, linewidth=2,color='b')
+plt.semilogx(freq,segMCC_mean, linewidth=1,color='b')
 plt.xlabel("Frequency [Hz]")
 plt.ylabel("Magnitude Correlation")
 plt.title("MCC")
 plt.grid(linestyle='--')
+plt.xlim(50, 8000) 
 plt.show()
