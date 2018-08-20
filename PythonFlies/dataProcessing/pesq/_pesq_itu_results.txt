@@ -1,0 +1,4 @@
+REFERENCE	 DEGRADED	 PESQMOS	 PESQMOS	 SUBJMOS	 COND	 SAMPLE_FREQ	 CRUDE_DELAY
+C:/Users/TobiasToft/Documents/dataset8_MultiTfNoise/TIMIT_train_ref1/331_ref.wav	 C:/Users/TobiasToft/Documents/dataset8_MultiTfNoise/TIMIT_train_feat1/331_feat.wav	 SQValue=2.948	 2.948	 0.000	 0	 16000	0.0000
+ C:/Users/TobiasToft/Documents/dataset8_MultiTfNoise/TIMIT_train_ref1/331_ref.wav	 C:/Users/TobiasToft/Documents/dataset8_MultiTfNoise/TIMIT_train_feat1/331_feat.wav	 SQValue=2.948	 2.948	 0.000	 0	 16000	0.0000
+ 
