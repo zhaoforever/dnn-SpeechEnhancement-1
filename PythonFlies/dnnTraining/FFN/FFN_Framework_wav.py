@@ -3,6 +3,7 @@ sys.path.append("C:/Users/Mikkel/Desktop/dnn-SpeechEnhancement/PythonFlies/dataP
 #sys.path.append("C:/Users/TobiasToft/Documents/GitHub/dnn-SpeechEnhancement/PythonFlies/dataProcessing/")
 import tensorflow as tf
 import FFNModelTF
+import FFN_Model_Cond_Dropout
 import os
 import numpy as np
 from tensorflow.python.tools import inspect_checkpoint as chkp
@@ -17,7 +18,7 @@ utils = imp.reload(utils)
 tf.reset_default_graph()
 
 ## Hyper- and model parameters ###
-MAX_EPOCHS = 10
+MAX_EPOCHS = 1
 BATCH_SIZE = 64
 LEARNING_RATE = 0.0001
 KEEP_PROB_TRAIN = 0.75
@@ -26,6 +27,7 @@ KEEP_PROB_VAL = 1.0
 ### Dataset and feature extraction parameters ###
 DATASET_SIZE_TRAIN = 20
 DATASET_SIZE_VAL = 2
+NUM_UNITS = 2048
 NFFT = 512
 NUMBER_BINS = 257
 STFT_OVERLAP = 0.75
@@ -54,10 +56,13 @@ featStd = trainingStats[1]
 next_feat_pl = tf.placeholder(tf.float32,[None,NUM_CLASSES],name='next_feat_pl')
 next_label_pl=tf.placeholder(tf.float32,[None,NUM_CLASSES],name='next_label_pl')
 
-keepProb = tf.placeholder(tf.float32,name='keepProb')
+keepProb = tf.placeholder_with_default(1.0,shape=None,name='keepProb')
+
+is_train = tf.placeholder_with_default(False,shape=None,name="is_train")
 
 ### Model definition ###
-preds = FFNModelTF.defineFFN(next_feat_pl,NUM_CLASSES,keepProb)
+#preds = FFNModelTF.defineFFN(next_feat_pl,NUM_UNITS,NUM_CLASSES,keepProb)
+preds = FFN_Model_Cond_Dropout.defineFFN(next_feat_pl,NUM_UNITS,NUM_CLASSES,keepProb,is_train)
 
 ### Optimizer ###
 loss = tf.losses.mean_squared_error(next_label_pl,preds)
