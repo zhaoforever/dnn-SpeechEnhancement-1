@@ -11,10 +11,13 @@ BIN_WIZE = True
 
 def calcMeanAndStd(dataPath,NFFT,STFT_OVERLAP,BIN_WIZE):
 	allFiles = os.listdir(dataPath)
-	allFiles = allFiles[:10]
-	averageOld = 0
-	stdOld = 0
+	#allFiles = allFiles[:10]
+	#averageOld = 0
+	#stdOld = 0
 	count = 0
+
+	featMean = 0
+	featStd = 0
 
 	for file in allFiles:
 		count += 1
@@ -32,13 +35,17 @@ def calcMeanAndStd(dataPath,NFFT,STFT_OVERLAP,BIN_WIZE):
 			featMean = np.asarray(np.mean(features,1))
 			featStd = np.asarray(np.std(features,1))
 		else:
-			featMean = np.mean(features)
-			featStd = np.std(features)
+			featMean = featMean + np.mean(features)
+			featStd =  featStd 	+ np.std(features)
 
-		averageOld = averageOld + (featMean + averageOld)/count
-		stdOld = stdOld + (featStd + stdOld)/count
+		#print((featMean + averageOld)/count)
+		#averageOld = averageOld + (featMean + averageOld)/count
+		#print(averageOld)
+		#stdOld = stdOld + (featStd + stdOld)/count
+	featMean = featMean/count
+	featStd = featStd/count
 
-	averageNew = averageOld
-	stdNew = stdOld
+	#averageNew = averageOld
+	#stdNew = stdOld
 
-	return averageNew, stdNew
+	return featMean, featStd

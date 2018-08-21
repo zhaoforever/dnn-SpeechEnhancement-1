@@ -13,27 +13,30 @@ import imp
 import matplotlib.pyplot as plt
 import utils
 import FeatureExtraction
+import dataStatistics
+import time
 utils = imp.reload(utils)
 
 tf.reset_default_graph()
 
 ## Hyper- and model parameters ###
-MAX_EPOCHS = 1
-BATCH_SIZE = 64
+MAX_EPOCHS = 100
+BATCH_SIZE = 32
 LEARNING_RATE = 0.0001
 KEEP_PROB_TRAIN = 0.75
 KEEP_PROB_VAL = 1.0
 
 ### Dataset and feature extraction parameters ###
-DATASET_SIZE_TRAIN = 20
-DATASET_SIZE_VAL = 2
-NUM_UNITS = 2048
-NFFT = 512
-NUMBER_BINS = 257
+DATASET_SIZE_TRAIN = 1000
+DATASET_SIZE_VAL = 100
+NUM_UNITS = 1024
+NFFT = 128
+NUMBER_BINS = int(NFFT/2+1)
 STFT_OVERLAP = 0.75
 #NUM_CLASSES = int(NFFT/2+1)
 NUM_CLASSES = NUMBER_BINS
 AUDIO_dB_SPL = 60
+BIN_WIZE = False
 
 ### Early stopping criteria ###
 STOP_COUNT = 10
@@ -111,9 +114,18 @@ allFilesVal = allFilesVal[0:DATASET_SIZE_VAL]
 iter = 0
 finalPreds = np.empty((0,NUM_CLASSES))
 
+### Removes old Tensorboard event files ###
 allEventFiles = os.listdir('./logs/')
 for file in allEventFiles:
 	os.remove('./logs/'+file)
+
+
+
+### Data statistics ###
+tic = time.time()
+featMean, featStd = dataStatistics.calcMeanAndStd(label_root_train,NFFT,STFT_OVERLAP,BIN_WIZE)
+toc = time.time()
+print(toc-tic)
 
 print('Training...')
 with tf.Session() as sess:
@@ -162,7 +174,7 @@ with tf.Session() as sess:
 
 					if iter == 0:
 						fetches_train = [train_op,loss,gradnorm_summary]
-						feed_dict_train = {next_feat_pl: next_feat, next_label_pl: next_label, keepProb: KEEP_PROB_TRAIN}
+						feed_dict_train = {next_feat_pl: next_feat, next_label_pl: next_label, keepProb: KEEP_PROB_TRAIN,is_train: True}
 
 						# running the traning optimizer
 						res_train = sess.run(fetches=fetches_train,
@@ -171,7 +183,7 @@ with tf.Session() as sess:
 						writer.add_summary(res_train[2], epoch)
 					else:
 						fetches_train = [train_op,loss]
-						feed_dict_train = {next_feat_pl: next_feat, next_label_pl: next_label, keepProb: KEEP_PROB_TRAIN}
+						feed_dict_train = {next_feat_pl: next_feat, next_label_pl: next_label, keepProb: KEEP_PROB_TRAIN,is_train: True}
 
 						# running the traning optimizer
 						res_train = sess.run(fetches=fetches_train,
@@ -183,6 +195,7 @@ with tf.Session() as sess:
 				train_loss_mean.append(np.mean(train_loss))
 				train_loss = []
 	 		#### Validation ####
+			valFirst = True
 			for file in allFilesVal:
 				filePathFeat_val = feat_root_val + '/' + file
 				filePathRef_val = label_root_val + '/' + file
@@ -222,7 +235,10 @@ with tf.Session() as sess:
 					feed_dict=feed_dict_Val)
 
 					val_loss.append(res_Val[0])
-					finalPreds = np.concatenate((finalPreds,res_Val[1]),axis=0)
+					if valFirst:
+						finalPreds = np.concatenate((finalPreds,res_Val[1]),axis=0)
+						valFirst = False
+
 				val_loss_mean.append(np.mean(val_loss))
 				val_loss = []
 
