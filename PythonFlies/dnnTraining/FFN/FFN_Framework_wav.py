@@ -2,35 +2,28 @@ import sys
 sys.path.append("C:/Users/Mikkel/Desktop/dnn-SpeechEnhancement/PythonFlies/dataProcessing/")
 #sys.path.append("C:/Users/TobiasToft/Documents/GitHub/dnn-SpeechEnhancement/PythonFlies/dataProcessing/")
 import tensorflow as tf
-import FFNModelTF
 import FFN_Model_Cond_Dropout
 import os
 import numpy as np
-from tensorflow.python.tools import inspect_checkpoint as chkp
-from scipy.io import wavfile
 import random
-import imp
-import matplotlib.pyplot as plt
-import utils
 import FeatureExtraction
 import dataStatistics
 import time
-utils = imp.reload(utils)
 
 tf.reset_default_graph()
 
 ## Hyper- and model parameters ###
-MAX_EPOCHS = 100
-BATCH_SIZE = 32
+MAX_EPOCHS = 5
+BATCH_SIZE = 16
 LEARNING_RATE = 0.0001
-KEEP_PROB_TRAIN = 0.75
+KEEP_PROB_TRAIN = 0.5
 KEEP_PROB_VAL = 1.0
 
 ### Dataset and feature extraction parameters ###
-DATASET_SIZE_TRAIN = 1000
-DATASET_SIZE_VAL = 100
+DATASET_SIZE_TRAIN = 5
+DATASET_SIZE_VAL = 2
 NUM_UNITS = 1024
-NFFT = 128
+NFFT = 256
 NUMBER_BINS = int(NFFT/2+1)
 STFT_OVERLAP = 0.75
 #NUM_CLASSES = int(NFFT/2+1)
@@ -39,7 +32,7 @@ AUDIO_dB_SPL = 60
 BIN_WIZE = False
 
 ### Early stopping criteria ###
-STOP_COUNT = 10
+STOP_COUNT = 15
 
 ### Path to dataset ###
 dataPath = "C:/Users/s123028/dataset8_MulitTfNoise/"
@@ -50,11 +43,6 @@ label_root_train = dataPath + "TIMIT_train_ref1/"
 feat_root_val = dataPath + 'TIMIT_val_feat/'
 label_root_val  = dataPath + 'TIMIT_val_ref/'
 
-trainingStats = np.load(dataPath + "trainingStats.npy")
-
-featMean = trainingStats[0]
-featStd = trainingStats[1]
-
 ### Model placeholders ###
 next_feat_pl = tf.placeholder(tf.float32,[None,NUM_CLASSES],name='next_feat_pl')
 next_label_pl=tf.placeholder(tf.float32,[None,NUM_CLASSES],name='next_label_pl')
@@ -64,7 +52,6 @@ keepProb = tf.placeholder_with_default(1.0,shape=None,name='keepProb')
 is_train = tf.placeholder_with_default(False,shape=None,name="is_train")
 
 ### Model definition ###
-#preds = FFNModelTF.defineFFN(next_feat_pl,NUM_UNITS,NUM_CLASSES,keepProb)
 preds = FFN_Model_Cond_Dropout.defineFFN(next_feat_pl,NUM_UNITS,NUM_CLASSES,keepProb,is_train)
 
 ### Optimizer ###
@@ -92,7 +79,9 @@ for g,v in grads_and_vars:
 
 with tf.name_scope('tb_images'):
 	tb_image = tf.placeholder(tf.float32,shape=None,name='tb_image')
-	image_summary_op = tf.summary.image('images',tb_image, 1)
+	image_summary_op_input  = tf.summary.image('images_input',tb_image, 1)
+	image_summary_op_output = tf.summary.image('images_output',tb_image, 1)
+	image_summary_op_target = tf.summary.image('images_target',tb_image, 1)
 
 ### Model variable initializer ###
 train_loss = []
@@ -104,14 +93,13 @@ bestCount = 0
 trainingBool = True
 validationBool = True
 
-epochCount = 0
+#epochCount = 0
 allFilesTrain = os.listdir(feat_root_train)
 allFilesTrain = allFilesTrain[0:DATASET_SIZE_TRAIN]
 
 allFilesVal = os.listdir(feat_root_val)
 allFilesVal = allFilesVal[0:DATASET_SIZE_VAL]
 
-iter = 0
 finalPreds = np.empty((0,NUM_CLASSES))
 
 ### Removes old Tensorboard event files ###
@@ -123,39 +111,36 @@ for file in allEventFiles:
 
 ### Data statistics ###
 tic = time.time()
-featMean, featStd = dataStatistics.calcMeanAndStd(label_root_train,NFFT,STFT_OVERLAP,BIN_WIZE)
+featMean, featStd = dataStatistics.calcMeanAndStd(label_root_train,DATASET_SIZE_TRAIN,NFFT,STFT_OVERLAP,BIN_WIZE)
 toc = time.time()
-print(toc-tic)
+print(np.round(toc-tic,2),"secs to calc data stats")
 
 print('Training...')
 with tf.Session() as sess:
-	#os.remove('./logs/')
 	writer = tf.summary.FileWriter('logs', sess.graph)
 	sess.run(tf.global_variables_initializer())
 	saver = tf.train.Saver()
+
+	firstRun = True
 	for epoch in range(0,MAX_EPOCHS):
+		tic = time.time()
 		iter = 0
 		if trainingBool:
 			train_loss_mean = []
 			val_loss_mean = []
 
 			random.shuffle(allFilesTrain)
-			#random.shuffle(allFilesVal)
 			for file in allFilesTrain:
 				filePathFeat = feat_root_train + '/' + file
 				filePathLabel = label_root_train + '/' + file
 
-				if epochCount == MAX_EPOCHS:
-					break
+				features,_ = FeatureExtraction.FeatureExtraction(filePathFeat,AUDIO_dB_SPL,NFFT,STFT_OVERLAP,NUMBER_BINS,featMean,featStd)
 
-				features,features_phi = FeatureExtraction.FeatureExtraction(filePathFeat,AUDIO_dB_SPL,NFFT,STFT_OVERLAP,NUMBER_BINS,featMean,featStd)
-				labels,labels_phi = FeatureExtraction.FeatureExtraction(filePathLabel.replace('feat','ref'),AUDIO_dB_SPL,NFFT,STFT_OVERLAP,NUMBER_BINS,featMean,featStd)
+				labels,_ = FeatureExtraction.FeatureExtraction(filePathLabel.replace('feat','ref'),AUDIO_dB_SPL,NFFT,STFT_OVERLAP,NUMBER_BINS,featMean,featStd)
 
 				idx1Train = 0
-				idx2Train = idx1Train+BATCH_SIZE
 
-
-				while ((idx1Train+BATCH_SIZE) <= features.shape[0]) and (trainingBool):
+				while ((idx1Train+BATCH_SIZE) <= features.shape[0]):
 
 
 					## Training:
@@ -166,7 +151,6 @@ with tf.Session() as sess:
 
 						next_label = np.concatenate((next_label,labels[idx1Train,:]),axis=0)
 						idx1Train +=1
-						idx2Train +=1
 
 					next_feat = np.reshape(next_feat,[-1,features.shape[1]])
 					next_label = np.reshape(next_label,[-1,labels.shape[1]])
@@ -194,21 +178,20 @@ with tf.Session() as sess:
 
 				train_loss_mean.append(np.mean(train_loss))
 				train_loss = []
+
 	 		#### Validation ####
-			valFirst = True
+			valFirstFile = True
 			for file in allFilesVal:
 				filePathFeat_val = feat_root_val + '/' + file
 				filePathRef_val = label_root_val + '/' + file
 
-				features_val,features_val_phi = FeatureExtraction.FeatureExtraction(filePathFeat_val,AUDIO_dB_SPL,NFFT,STFT_OVERLAP,NUMBER_BINS,featMean,featStd)
-				labels_val,labels_val_phi = FeatureExtraction.FeatureExtraction(filePathRef_val.replace('feat','ref'),AUDIO_dB_SPL,NFFT,STFT_OVERLAP,NUMBER_BINS,featMean,featStd)
+				features_val,_ = FeatureExtraction.FeatureExtraction(filePathFeat_val,AUDIO_dB_SPL,NFFT,STFT_OVERLAP,NUMBER_BINS,featMean,featStd)
+
+				labels_val,_ = FeatureExtraction.FeatureExtraction(filePathRef_val.replace('feat','ref'),AUDIO_dB_SPL,NFFT,STFT_OVERLAP,NUMBER_BINS,featMean,featStd)
 
 				idx1Val = 0
-				idx2Val = idx1Val+BATCH_SIZE
 
-
-				while ((idx2Val+BATCH_SIZE) <= features_val.shape[0]) and (validationBool):
-
+				while ((idx1Val+BATCH_SIZE) <= features_val.shape[0]):
 
 					## Validating:
 					next_feat = np.empty((0))
@@ -218,13 +201,9 @@ with tf.Session() as sess:
 
 						next_label = np.concatenate((next_label,labels_val[idx1Val,:]),axis=0)
 						idx1Val +=1
-						idx2Val +=1
 
 					next_feat = np.reshape(next_feat,[-1,features_val.shape[1]])
 					next_label = np.reshape(next_label,[-1,labels_val.shape[1]])
-
-
-
 
 					fetches_Val = [loss,preds]
 					feed_dict_Val = {next_feat_pl: next_feat, next_label_pl: next_label, keepProb: 1.0}
@@ -235,16 +214,26 @@ with tf.Session() as sess:
 					feed_dict=feed_dict_Val)
 
 					val_loss.append(res_Val[0])
-					if valFirst:
+					if valFirstFile:
 						finalPreds = np.concatenate((finalPreds,res_Val[1]),axis=0)
-						valFirst = False
 
+				### Validation flag ###
 				val_loss_mean.append(np.mean(val_loss))
 				val_loss = []
 
+				if firstRun:
+					features_val_image = np.flipud(features_val.T)
+					image_summary = sess.run(image_summary_op_input, feed_dict={tb_image: np.reshape(features_val_image, [-1, features_val_image.shape[0],features_val_image.shape[1], 1])})
+					writer.add_summary(image_summary, epoch)
+
+					labels_val_image = np.flipud(labels_val.T)
+					image_summary = sess.run(image_summary_op_target, feed_dict={tb_image: np.reshape(labels_val_image, [-1, labels_val_image.shape[0],labels_val_image.shape[1], 1])})
+					writer.add_summary(image_summary, epoch)
+				firstRun = False
+				valFirstFile = False
 
 			print('End of epoch: ',epoch+1)
-			epochCount += 1
+
 
 			### End of epoch rutines ###
 			train_loss_mean = np.mean(train_loss_mean)
@@ -257,10 +246,10 @@ with tf.Session() as sess:
 			writer.add_summary(summ, epoch)
 
 
-			finalPreds0 = np.flipud(finalPreds.T)
-			finalPreds = np.empty((0,NUM_CLASSES))
-			image_summary = sess.run(image_summary_op, feed_dict={tb_image: np.reshape(finalPreds0, [-1, finalPreds0.shape[0],finalPreds0.shape[1], 1])})
+			finalPreds = np.flipud(finalPreds.T)
+			image_summary = sess.run(image_summary_op_output, feed_dict={tb_image: np.reshape(finalPreds, [-1, finalPreds.shape[0],finalPreds.shape[1], 1])})
 			writer.add_summary(image_summary, epoch)
+			finalPreds = np.empty((0,NUM_CLASSES))
 
 			### Early stopping ###
 			if val_loss_mean < val_loss_best:
@@ -284,5 +273,6 @@ with tf.Session() as sess:
 			else:
 				trainingBool = False
 				validationBool = False
-
+		toc = time.time()
+		print(tic-tic,"secs for one epoch")
 	print('Training done!')
