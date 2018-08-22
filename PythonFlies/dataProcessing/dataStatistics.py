@@ -4,14 +4,14 @@ import os
 import utils
 
 
-dataPath = "C:/Users/s123028/dataset8_MulitTfNoise/TIMIT_train_feat1/"
-NFFT = 512
-STFT_OVERLAP = 0.75
-BIN_WIZE = True
+#dataPath = "C:/Users/s123028/dataset8_MulitTfNoise/TIMIT_train_feat1/"
+#NFFT = 512
+#STFT_OVERLAP = 0.75
+#BIN_WIZE = True
 
-def calcMeanAndStd(dataPath,NFFT,STFT_OVERLAP,BIN_WIZE):
+def calcMeanAndStd(dataPath,NUM_FILES,NFFT,STFT_OVERLAP,BIN_WIZE):
 	allFiles = os.listdir(dataPath)
-	#allFiles = allFiles[:10]
+	allFiles = allFiles[:NUM_FILES]
 	#averageOld = 0
 	#stdOld = 0
 	count = 0
