@@ -9,18 +9,16 @@ sess = tf.Session()
 saver.restore(sess, tf.train.latest_checkpoint('./savedModelsWav/'))
 
 #tf.global_variables()
+
+#tf.get_variable('variance_scaling')
 #for node in input_graph_def.node:
 	#print(node.name)
-
-
 
 #from tensorflow.python.tools.inspect_checkpoint import print_tensors_in_checkpoint_file
 
 
 #latest_ckp = tf.train.latest_checkpoint('./savedModelsWav/')
-#print_tensors_in_checkpoint_file(latest_ckp, all_tensors=False, tensor_name='',all_tensor_names=True)
-
-
+#print_tensors_in_checkpoint_file(latest_ckp, all_tensors=True, tensor_name='',all_tensor_names=True)
 
 
 # Output from the model that needs to be freezed

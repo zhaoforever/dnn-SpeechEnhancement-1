@@ -14,28 +14,6 @@ import modelParameters as mp
 
 tf.reset_default_graph()
 
-# ## Hyper- and model parameters ###
-# MAX_EPOCHS = 50
-# BATCH_SIZE = 16
-# LEARNING_RATE = 0.0001
-# KEEP_PROB_TRAIN = 0.75
-# KEEP_PROB_VAL = 1.0
-# DECAYING_LEARNING_RATE = True
-#
-# ### Dataset and feature extraction parameters ###
-# DATASET_SIZE_TRAIN = 5
-# DATASET_SIZE_VAL = 2
-# NUM_UNITS = 1024
-# NFFT = 256
-# NUMBER_BINS = int(NFFT/2+1)
-# STFT_OVERLAP = 0.75
-# NUM_CLASSES = NUMBER_BINS
-# AUDIO_dB_SPL = 60
-# BIN_WIZE = False
-#
-# ### Early stopping criteria ###
-# STOP_COUNT = 15
-
 ### Path to dataset ###
 dataPath = "C:/Users/s123028/dataset8_MulitTfNoise/"
 #dataPath = "C:/Users/TobiasToft/Documents/dataset8_MultiTfNoise/"
@@ -49,7 +27,6 @@ label_root_val  = dataPath + 'TIMIT_val_ref/'
 next_feat_pl = tf.placeholder(tf.float32,[None,mp.NUM_CLASSES],name='next_feat_pl')
 next_label_pl=tf.placeholder(tf.float32,[None,mp.NUM_CLASSES],name='next_label_pl')
 
-#learning_rate = tf.placeholder_with_default(LEARNING_RATE,shape=None,name='learning_rate')
 
 keepProb = tf.placeholder_with_default(1.0,shape=None,name='keepProb')
 
@@ -80,11 +57,6 @@ train_op = optimizer.minimize(loss=loss,global_step=global_step)
 with tf.name_scope('performance'):
 	loss_sum = tf.placeholder(tf.float32,shape=None,name='loss_summary')
 	tf_loss_summary = tf.summary.scalar('loss', loss_sum)
-
-	#loss_sum_val = tf.placeholder(tf.float32,shape=None,name='loss_summary_val')
-	#tf_loss_summary_val = tf.summary.scalar('loss_val', loss_sum_val)
-
-#performance_summaries = tf.summary.merge([tf_loss_summary_train,tf_loss_summary_val])
 
 for g,v in grads_and_vars:
 	if 'out' in v.name and 'kernel' in v.name:
@@ -311,3 +283,5 @@ with tf.Session() as sess:
 	writer_train.close()
 	writer_val.close()
 	print('Training done!')
+
+import freezeModel

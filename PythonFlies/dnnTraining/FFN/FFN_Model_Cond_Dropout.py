@@ -16,8 +16,7 @@ def defineFFN(next_feat_pl,NUM_UNITS,NUM_CLASSES,keepProb,is_train):
 
 	out = tf.layers.dense(x2,NUM_CLASSES,kernel_initializer=initializer,activation=None,name='out')
 
-	alpha = tf.Variable(1,dtype=tf.float32,trainable=True,name="variance_scaling")
-
-	out = tf.scalar_mul(alpha,out)
+	#alpha = tf.Variable(1,dtype=tf.float32,trainable=True,name="variance_scaling")
+	#out = tf.scalar_mul(alpha,out)
 
 	return out
