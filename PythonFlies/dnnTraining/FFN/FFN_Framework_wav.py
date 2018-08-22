@@ -2,37 +2,39 @@ import sys
 sys.path.append("C:/Users/Mikkel/Desktop/dnn-SpeechEnhancement/PythonFlies/dataProcessing/")
 #sys.path.append("C:/Users/TobiasToft/Documents/GitHub/dnn-SpeechEnhancement/PythonFlies/dataProcessing/")
 import tensorflow as tf
-import FFN_Model_Cond_Dropout
 import os
 import numpy as np
 import random
+import time
+### Our functions ###
+import FFN_Model_Cond_Dropout
 import FeatureExtraction
 import dataStatistics
-import time
+import modelParameters as mp
 
 tf.reset_default_graph()
 
-## Hyper- and model parameters ###
-MAX_EPOCHS = 50
-BATCH_SIZE = 16
-LEARNING_RATE = 0.0005
-KEEP_PROB_TRAIN = 0.75
-KEEP_PROB_VAL = 1.0
-DECAYING_LEARNING_RATE = True
-
-### Dataset and feature extraction parameters ###
-DATASET_SIZE_TRAIN = 10
-DATASET_SIZE_VAL = 2
-NUM_UNITS = 1024
-NFFT = 256
-NUMBER_BINS = int(NFFT/2+1)
-STFT_OVERLAP = 0.75
-NUM_CLASSES = NUMBER_BINS
-AUDIO_dB_SPL = 60
-BIN_WIZE = False
-
-### Early stopping criteria ###
-STOP_COUNT = 15
+# ## Hyper- and model parameters ###
+# MAX_EPOCHS = 50
+# BATCH_SIZE = 16
+# LEARNING_RATE = 0.0001
+# KEEP_PROB_TRAIN = 0.75
+# KEEP_PROB_VAL = 1.0
+# DECAYING_LEARNING_RATE = True
+#
+# ### Dataset and feature extraction parameters ###
+# DATASET_SIZE_TRAIN = 5
+# DATASET_SIZE_VAL = 2
+# NUM_UNITS = 1024
+# NFFT = 256
+# NUMBER_BINS = int(NFFT/2+1)
+# STFT_OVERLAP = 0.75
+# NUM_CLASSES = NUMBER_BINS
+# AUDIO_dB_SPL = 60
+# BIN_WIZE = False
+#
+# ### Early stopping criteria ###
+# STOP_COUNT = 15
 
 ### Path to dataset ###
 dataPath = "C:/Users/s123028/dataset8_MulitTfNoise/"
@@ -44,8 +46,8 @@ feat_root_val = dataPath + 'TIMIT_val_feat/'
 label_root_val  = dataPath + 'TIMIT_val_ref/'
 
 ### Model placeholders ###
-next_feat_pl = tf.placeholder(tf.float32,[None,NUM_CLASSES],name='next_feat_pl')
-next_label_pl=tf.placeholder(tf.float32,[None,NUM_CLASSES],name='next_label_pl')
+next_feat_pl = tf.placeholder(tf.float32,[None,mp.NUM_CLASSES],name='next_feat_pl')
+next_label_pl=tf.placeholder(tf.float32,[None,mp.NUM_CLASSES],name='next_label_pl')
 
 #learning_rate = tf.placeholder_with_default(LEARNING_RATE,shape=None,name='learning_rate')
 
@@ -54,21 +56,21 @@ keepProb = tf.placeholder_with_default(1.0,shape=None,name='keepProb')
 is_train = tf.placeholder_with_default(False,shape=None,name="is_train")
 
 ### Model definition ###
-preds = FFN_Model_Cond_Dropout.defineFFN(next_feat_pl,NUM_UNITS,NUM_CLASSES,keepProb,is_train)
+preds = FFN_Model_Cond_Dropout.defineFFN(next_feat_pl,mp.NUM_UNITS,mp.NUM_CLASSES,keepProb,is_train)
 
 ### Optimizer ###
 loss = tf.losses.mean_squared_error(next_label_pl,preds)
 
 global_step = tf.Variable(0, name='global_step',trainable=False)
 
-if DECAYING_LEARNING_RATE:
-	learning_rate = tf.train.exponential_decay(LEARNING_RATE, global_step,
+if mp.DECAYING_LEARNING_RATE:
+	learning_rate = tf.train.exponential_decay(mp.LEARNING_RATE, global_step,
                                            100000, 0.96, staircase=True)
 	rate_sum = tf.placeholder(tf.float32,shape=None,name='learning_rate_sum')
 	tf_learning_rate_summary = tf.summary.scalar('Learning_Rate', rate_sum)
 
 else:
-	learning_rate = LEARNING_RATE
+	learning_rate = mp.LEARNING_RATE
 
 optimizer = tf.train.AdamOptimizer(learning_rate=learning_rate)
 grads_and_vars = optimizer.compute_gradients(loss)
@@ -76,13 +78,13 @@ train_op = optimizer.minimize(loss=loss,global_step=global_step)
 
 ### Summaries ###
 with tf.name_scope('performance'):
-	loss_sum_train = tf.placeholder(tf.float32,shape=None,name='loss_summary_train')
-	tf_loss_summary_train = tf.summary.scalar('loss_train', loss_sum_train)
+	loss_sum = tf.placeholder(tf.float32,shape=None,name='loss_summary')
+	tf_loss_summary = tf.summary.scalar('loss', loss_sum)
 
-	loss_sum_val = tf.placeholder(tf.float32,shape=None,name='loss_summary_val')
-	tf_loss_summary_val = tf.summary.scalar('loss_val', loss_sum_val)
+	#loss_sum_val = tf.placeholder(tf.float32,shape=None,name='loss_summary_val')
+	#tf_loss_summary_val = tf.summary.scalar('loss_val', loss_sum_val)
 
-performance_summaries = tf.summary.merge([tf_loss_summary_train,tf_loss_summary_val])
+#performance_summaries = tf.summary.merge([tf_loss_summary_train,tf_loss_summary_val])
 
 for g,v in grads_and_vars:
 	if 'out' in v.name and 'kernel' in v.name:
@@ -109,35 +111,39 @@ validationBool = True
 
 #epochCount = 0
 allFilesTrain = os.listdir(feat_root_train)
-allFilesTrain = allFilesTrain[0:DATASET_SIZE_TRAIN]
+allFilesTrain = allFilesTrain[0:mp.DATASET_SIZE_TRAIN]
 
 allFilesVal = os.listdir(feat_root_val)
-allFilesVal = allFilesVal[0:DATASET_SIZE_VAL]
-
-finalPreds = np.empty((0,NUM_CLASSES))
+allFilesVal = allFilesVal[0:mp.DATASET_SIZE_VAL]
 
 ### Removes old Tensorboard event files ###
-allEventFiles = os.listdir('./logs/')
+allEventFiles = os.listdir('./logs/train/')
 for file in allEventFiles:
-	os.remove('./logs/'+file)
+	os.remove('./logs/train/'+file)
+
+allEventFiles = os.listdir('./logs/val/')
+for file in allEventFiles:
+	os.remove('./logs/val/'+file)
 
 
 
 ### Data statistics ###
 tic = time.time()
-featMean, featStd = dataStatistics.calcMeanAndStd(label_root_train,DATASET_SIZE_TRAIN,NFFT,STFT_OVERLAP,BIN_WIZE)
+featMean, featStd = dataStatistics.calcMeanAndStd(label_root_train,mp.DATASET_SIZE_TRAIN,mp.NFFT,mp.STFT_OVERLAP,mp.BIN_WIZE)
 toc = time.time()
 print(np.round(toc-tic,2),"secs to calc data stats")
 
 print('Training...')
 with tf.Session() as sess:
-	writer = tf.summary.FileWriter('logs', sess.graph)
+	writer_train = tf.summary.FileWriter('logs/train/', sess.graph)
+	writer_val = tf.summary.FileWriter('logs/val/', sess.graph)
 	sess.run(tf.global_variables_initializer())
 	saver = tf.train.Saver()
 
 	firstRun = True
-	for epoch in range(1,MAX_EPOCHS):
+	for epoch in range(1,mp.MAX_EPOCHS):
 		tic = time.time()
+		finalPreds = np.empty((0,mp.NUM_CLASSES))
 		iter = 0
 		if trainingBool:
 			train_loss_mean = []
@@ -148,18 +154,18 @@ with tf.Session() as sess:
 				filePathFeat = feat_root_train + '/' + file
 				filePathLabel = label_root_train + '/' + file
 
-				features,_ = FeatureExtraction.FeatureExtraction(filePathFeat,AUDIO_dB_SPL,NFFT,STFT_OVERLAP,NUMBER_BINS,featMean,featStd)
+				features,_ = FeatureExtraction.FeatureExtraction(filePathFeat,mp.AUDIO_dB_SPL,mp.NFFT,mp.STFT_OVERLAP,mp.NUMBER_BINS,featMean,featStd)
 
-				labels,_ = FeatureExtraction.FeatureExtraction(filePathLabel.replace('feat','ref'),AUDIO_dB_SPL,NFFT,STFT_OVERLAP,NUMBER_BINS,featMean,featStd)
+				labels,_ = FeatureExtraction.FeatureExtraction(filePathLabel.replace('feat','ref'),mp.AUDIO_dB_SPL,mp.NFFT,mp.STFT_OVERLAP,mp.NUMBER_BINS,featMean,featStd)
 
 				idx1Train = 0
 
-				while ((idx1Train+BATCH_SIZE) <= features.shape[0]):
+				while ((idx1Train+mp.BATCH_SIZE) <= features.shape[0]):
 
 					### Training ###
 					next_feat = np.empty((0))
 					next_label = np.empty((0))
-					for n in range(0,BATCH_SIZE):
+					for n in range(0,mp.BATCH_SIZE):
 						next_feat = np.concatenate((next_feat,features[idx1Train,:]),axis=0)
 
 						next_label = np.concatenate((next_label,labels[idx1Train,:]),axis=0)
@@ -171,16 +177,16 @@ with tf.Session() as sess:
 
 					if iter == 0:
 						fetches_train = [train_op,loss,gradnorm_summary]
-						feed_dict_train = {next_feat_pl: next_feat, next_label_pl: next_label, keepProb: KEEP_PROB_TRAIN,is_train: True}
+						feed_dict_train = {next_feat_pl: next_feat, next_label_pl: next_label, keepProb: mp.KEEP_PROB_TRAIN,is_train: True}
 
 						# running the traning optimizer
 						res_train = sess.run(fetches=fetches_train,
 						feed_dict=feed_dict_train)
 
-						writer.add_summary(res_train[2], epoch)
+						writer_train.add_summary(res_train[2], epoch)
 					else:
 						fetches_train = [train_op,loss]
-						feed_dict_train = {next_feat_pl: next_feat, next_label_pl: next_label, keepProb: KEEP_PROB_TRAIN,is_train: True}
+						feed_dict_train = {next_feat_pl: next_feat, next_label_pl: next_label, keepProb: mp.KEEP_PROB_TRAIN,is_train: True}
 
 						# running the traning optimizer
 						res_train = sess.run(fetches=fetches_train,
@@ -198,18 +204,18 @@ with tf.Session() as sess:
 				filePathFeat_val = feat_root_val + '/' + file
 				filePathRef_val = label_root_val + '/' + file
 
-				features_val,_ = FeatureExtraction.FeatureExtraction(filePathFeat_val,AUDIO_dB_SPL,NFFT,STFT_OVERLAP,NUMBER_BINS,featMean,featStd)
+				features_val,_ = FeatureExtraction.FeatureExtraction(filePathFeat_val,mp.AUDIO_dB_SPL,mp.NFFT,mp.STFT_OVERLAP,mp.NUMBER_BINS,featMean,featStd)
 
-				labels_val,_ = FeatureExtraction.FeatureExtraction(filePathRef_val.replace('feat','ref'),AUDIO_dB_SPL,NFFT,STFT_OVERLAP,NUMBER_BINS,featMean,featStd)
+				labels_val,_ = FeatureExtraction.FeatureExtraction(filePathRef_val.replace('feat','ref'),mp.AUDIO_dB_SPL,mp.NFFT,mp.STFT_OVERLAP,mp.NUMBER_BINS,featMean,featStd)
 
 				idx1Val = 0
 
-				while ((idx1Val+BATCH_SIZE) <= features_val.shape[0]):
+				while ((idx1Val+mp.BATCH_SIZE) <= features_val.shape[0]):
 
 					## Validating:
 					next_feat = np.empty((0))
 					next_label = np.empty((0))
-					for n in range(0,BATCH_SIZE):
+					for n in range(0,mp.BATCH_SIZE):
 						next_feat = np.concatenate((next_feat,features_val[idx1Val,:]),axis=0)
 
 						next_label = np.concatenate((next_label,labels_val[idx1Val,:]),axis=0)
@@ -237,11 +243,11 @@ with tf.Session() as sess:
 				if firstRun:
 					features_val_image = np.flipud(features_val.T)
 					image_summary = sess.run(image_summary_op_input, feed_dict={tb_image: np.reshape(features_val_image, [-1, features_val_image.shape[0],features_val_image.shape[1], 1])})
-					writer.add_summary(image_summary, epoch)
+					writer_val.add_summary(image_summary, epoch)
 
 					labels_val_image = np.flipud(labels_val.T)
 					image_summary = sess.run(image_summary_op_target, feed_dict={tb_image: np.reshape(labels_val_image, [-1, labels_val_image.shape[0],labels_val_image.shape[1], 1])})
-					writer.add_summary(image_summary, epoch)
+					writer_val.add_summary(image_summary, epoch)
 				firstRun = False
 				valFirstFile = False
 
@@ -255,20 +261,23 @@ with tf.Session() as sess:
 			print("Training loss: ", train_loss_mean, " Validation loss: ", val_loss_mean)
 
 			### Loss summary to Tensorboard ###
-			if DECAYING_LEARNING_RATE:
+			if mp.DECAYING_LEARNING_RATE:
 				rate = np.float32(sess.run(learning_rate))
 				summ = sess.run(tf_learning_rate_summary,feed_dict={rate_sum: rate})
-				writer.add_summary(summ, epoch)
+				writer_train.add_summary(summ, epoch)
 			else:
 				rate = learning_rate
-			summ = sess.run(performance_summaries,feed_dict={loss_sum_train: train_loss_mean, loss_sum_val: val_loss_mean})
-			writer.add_summary(summ, epoch)
+
+			summ = sess.run(tf_loss_summary,feed_dict={loss_sum: train_loss_mean})
+			writer_train.add_summary(summ, epoch)
+
+			summ = sess.run(tf_loss_summary,feed_dict={loss_sum: val_loss_mean})
+			writer_val.add_summary(summ, epoch)
 
 
 			finalPreds = np.flipud(finalPreds.T)
 			image_summary = sess.run(image_summary_op_output, feed_dict={tb_image: np.reshape(finalPreds, [-1, finalPreds.shape[0],finalPreds.shape[1], 1])})
-			writer.add_summary(image_summary, epoch)
-			finalPreds = np.empty((0,NUM_CLASSES))
+			writer_val.add_summary(image_summary, epoch)
 
 			### Early stopping ###
 			if val_loss_mean < val_loss_best:
@@ -284,7 +293,7 @@ with tf.Session() as sess:
 				saveStr = './savedModelsWav/my_test_model' + str(epoch) + '.ckpt'
 				saver.save(sess, saveStr)
 
-			elif bestCount < STOP_COUNT:
+			elif bestCount < mp.STOP_COUNT:
 				trainingBool = True
 				validationBool = True
 
@@ -299,5 +308,6 @@ with tf.Session() as sess:
 			print()
 		else:
 			break
-
+	writer_train.close()
+	writer_val.close()
 	print('Training done!')
