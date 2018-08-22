@@ -8,3 +8,5 @@
 *.pb
 *.LAPTOP-C90H6OBH
 *.LAPTOP-C90H6OBH
+PythonFlies/dnnTraining/FFN/savedModelsWav/checkpoint
+*.pyc

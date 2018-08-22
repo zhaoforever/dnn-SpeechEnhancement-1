@@ -13,20 +13,20 @@ import time
 tf.reset_default_graph()
 
 ## Hyper- and model parameters ###
-MAX_EPOCHS = 20
+MAX_EPOCHS = 50
 BATCH_SIZE = 16
-LEARNING_RATE = 0.0001
+LEARNING_RATE = 0.0005
 KEEP_PROB_TRAIN = 0.75
 KEEP_PROB_VAL = 1.0
+DECAYING_LEARNING_RATE = True
 
 ### Dataset and feature extraction parameters ###
-DATASET_SIZE_TRAIN = 5
+DATASET_SIZE_TRAIN = 10
 DATASET_SIZE_VAL = 2
 NUM_UNITS = 1024
 NFFT = 256
 NUMBER_BINS = int(NFFT/2+1)
 STFT_OVERLAP = 0.75
-#NUM_CLASSES = int(NFFT/2+1)
 NUM_CLASSES = NUMBER_BINS
 AUDIO_dB_SPL = 60
 BIN_WIZE = False
@@ -47,7 +47,7 @@ label_root_val  = dataPath + 'TIMIT_val_ref/'
 next_feat_pl = tf.placeholder(tf.float32,[None,NUM_CLASSES],name='next_feat_pl')
 next_label_pl=tf.placeholder(tf.float32,[None,NUM_CLASSES],name='next_label_pl')
 
-learning_rate = tf.placeholder_with_default(LEARNING_RATE,shape=None,'learning_rate')
+#learning_rate = tf.placeholder_with_default(LEARNING_RATE,shape=None,name='learning_rate')
 
 keepProb = tf.placeholder_with_default(1.0,shape=None,name='keepProb')
 
@@ -58,9 +58,21 @@ preds = FFN_Model_Cond_Dropout.defineFFN(next_feat_pl,NUM_UNITS,NUM_CLASSES,keep
 
 ### Optimizer ###
 loss = tf.losses.mean_squared_error(next_label_pl,preds)
-optimizer = tf.train.AdamOptimizer(learning_rate=LEARNING_RATE)
+
+global_step = tf.Variable(0, name='global_step',trainable=False)
+
+if DECAYING_LEARNING_RATE:
+	learning_rate = tf.train.exponential_decay(LEARNING_RATE, global_step,
+                                           100000, 0.96, staircase=True)
+	rate_sum = tf.placeholder(tf.float32,shape=None,name='learning_rate_sum')
+	tf_learning_rate_summary = tf.summary.scalar('Learning_Rate', rate_sum)
+
+else:
+	learning_rate = LEARNING_RATE
+
+optimizer = tf.train.AdamOptimizer(learning_rate=learning_rate)
 grads_and_vars = optimizer.compute_gradients(loss)
-train_op = optimizer.minimize(loss=loss)
+train_op = optimizer.minimize(loss=loss,global_step=global_step)
 
 ### Summaries ###
 with tf.name_scope('performance'):
@@ -233,16 +245,22 @@ with tf.Session() as sess:
 				firstRun = False
 				valFirstFile = False
 
-			print('End of epoch: ',epoch)
+			print('End of epoch:',epoch)
 
 
 			### End of epoch rutines ###
 			train_loss_mean = np.mean(train_loss_mean)
 			val_loss_mean = np.mean(val_loss_mean)
-
+			print('Number of global steps: %s' % sess.run(tf.train.get_global_step()))
 			print("Training loss: ", train_loss_mean, " Validation loss: ", val_loss_mean)
 
 			### Loss summary to Tensorboard ###
+			if DECAYING_LEARNING_RATE:
+				rate = np.float32(sess.run(learning_rate))
+				summ = sess.run(tf_learning_rate_summary,feed_dict={rate_sum: rate})
+				writer.add_summary(summ, epoch)
+			else:
+				rate = learning_rate
 			summ = sess.run(performance_summaries,feed_dict={loss_sum_train: train_loss_mean, loss_sum_val: val_loss_mean})
 			writer.add_summary(summ, epoch)
 
@@ -266,7 +284,7 @@ with tf.Session() as sess:
 				saveStr = './savedModelsWav/my_test_model' + str(epoch) + '.ckpt'
 				saver.save(sess, saveStr)
 
-			elif bestCount <= STOP_COUNT:
+			elif bestCount < STOP_COUNT:
 				trainingBool = True
 				validationBool = True
 
@@ -274,6 +292,12 @@ with tf.Session() as sess:
 			else:
 				trainingBool = False
 				validationBool = False
-		toc = time.time()
-		print(np.round(toc-tic,2),"secs for one epoch")
+
+
+			toc = time.time()
+			print(np.round(toc-tic,2),"s")
+			print()
+		else:
+			break
+
 	print('Training done!')
