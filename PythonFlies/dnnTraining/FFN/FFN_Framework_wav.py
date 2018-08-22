@@ -13,10 +13,10 @@ import time
 tf.reset_default_graph()
 
 ## Hyper- and model parameters ###
-MAX_EPOCHS = 5
+MAX_EPOCHS = 20
 BATCH_SIZE = 16
 LEARNING_RATE = 0.0001
-KEEP_PROB_TRAIN = 0.5
+KEEP_PROB_TRAIN = 0.75
 KEEP_PROB_VAL = 1.0
 
 ### Dataset and feature extraction parameters ###
@@ -46,6 +46,8 @@ label_root_val  = dataPath + 'TIMIT_val_ref/'
 ### Model placeholders ###
 next_feat_pl = tf.placeholder(tf.float32,[None,NUM_CLASSES],name='next_feat_pl')
 next_label_pl=tf.placeholder(tf.float32,[None,NUM_CLASSES],name='next_label_pl')
+
+learning_rate = tf.placeholder_with_default(LEARNING_RATE,shape=None,'learning_rate')
 
 keepProb = tf.placeholder_with_default(1.0,shape=None,name='keepProb')
 
@@ -122,7 +124,7 @@ with tf.Session() as sess:
 	saver = tf.train.Saver()
 
 	firstRun = True
-	for epoch in range(0,MAX_EPOCHS):
+	for epoch in range(1,MAX_EPOCHS):
 		tic = time.time()
 		iter = 0
 		if trainingBool:
@@ -142,8 +144,7 @@ with tf.Session() as sess:
 
 				while ((idx1Train+BATCH_SIZE) <= features.shape[0]):
 
-
-					## Training:
+					### Training ###
 					next_feat = np.empty((0))
 					next_label = np.empty((0))
 					for n in range(0,BATCH_SIZE):
@@ -232,7 +233,7 @@ with tf.Session() as sess:
 				firstRun = False
 				valFirstFile = False
 
-			print('End of epoch: ',epoch+1)
+			print('End of epoch: ',epoch)
 
 
 			### End of epoch rutines ###
@@ -241,7 +242,7 @@ with tf.Session() as sess:
 
 			print("Training loss: ", train_loss_mean, " Validation loss: ", val_loss_mean)
 
-			## Loss summary to
+			### Loss summary to Tensorboard ###
 			summ = sess.run(performance_summaries,feed_dict={loss_sum_train: train_loss_mean, loss_sum_val: val_loss_mean})
 			writer.add_summary(summ, epoch)
 
@@ -265,7 +266,7 @@ with tf.Session() as sess:
 				saveStr = './savedModelsWav/my_test_model' + str(epoch) + '.ckpt'
 				saver.save(sess, saveStr)
 
-			elif bestCount < STOP_COUNT:
+			elif bestCount <= STOP_COUNT:
 				trainingBool = True
 				validationBool = True
 
@@ -274,5 +275,5 @@ with tf.Session() as sess:
 				trainingBool = False
 				validationBool = False
 		toc = time.time()
-		print(tic-tic,"secs for one epoch")
+		print(np.round(toc-tic,2),"secs for one epoch")
 	print('Training done!')

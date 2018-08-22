@@ -9,17 +9,16 @@ sess = tf.Session()
 saver.restore(sess, tf.train.latest_checkpoint('./savedModelsWav/'))
 
 #tf.global_variables()
-
-for node in input_graph_def.node:
-	print(node.name)
-
-
-import tensorflow as tf
-from tensorflow.python.tools.inspect_checkpoint import print_tensors_in_checkpoint_file
+#for node in input_graph_def.node:
+	#print(node.name)
 
 
-latest_ckp = tf.train.latest_checkpoint('./savedModelsWav/')
-print_tensors_in_checkpoint_file(latest_ckp, all_tensors=False, tensor_name='',all_tensor_names=True)
+
+#from tensorflow.python.tools.inspect_checkpoint import print_tensors_in_checkpoint_file
+
+
+#latest_ckp = tf.train.latest_checkpoint('./savedModelsWav/')
+#print_tensors_in_checkpoint_file(latest_ckp, all_tensors=False, tensor_name='',all_tensor_names=True)
 
 
 

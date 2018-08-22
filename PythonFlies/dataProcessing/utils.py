@@ -43,10 +43,10 @@ def STFT(x,fs,wL,nOverlap):
 
 	f, t, Zxx = signal.stft(x, fs, nperseg=wL,noverlap=nOverlap,return_onesided=True)
 
-	Zxx_abs = np.abs(Zxx)
-	Zxx_phi = np.arctan2(Zxx.imag,Zxx.real)
+	#Zxx_abs = np.abs(Zxx)
+	#Zxx_phi = np.arctan2(Zxx.imag,Zxx.real)
 
-	return Zxx_abs, Zxx_phi, t, f
+	return np.abs(Zxx), np.arctan2(Zxx.imag,Zxx.real), t, f
 
 def ISTFT(X_abs,X_phi,fs,nfft,nOverlap):
 
