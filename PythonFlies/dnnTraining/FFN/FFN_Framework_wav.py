@@ -6,22 +6,24 @@ import os
 import numpy as np
 import random
 import time
+import imp
 ### Our functions ###
 import FFN_Model_Cond_Dropout
 import FeatureExtraction
 import dataStatistics
 import modelParameters as mp
+mp = imp.reload(mp)
 
 tf.reset_default_graph()
 
 ### Path to dataset ###
-dataPath = "C:/Users/s123028/dataset8_MulitTfNoise/"
+dataPath = "C:/Users/s123028/realRecs/"
 #dataPath = "C:/Users/TobiasToft/Documents/dataset8_MultiTfNoise/"
-feat_root_train = dataPath + "TIMIT_train_feat1/"
-label_root_train = dataPath + "TIMIT_train_ref1/"
+feat_root_train = dataPath + "trainFeatures1/"
+label_root_train = dataPath + "trainLabels1/"
 
-feat_root_val = dataPath + 'TIMIT_val_feat/'
-label_root_val  = dataPath + 'TIMIT_val_ref/'
+feat_root_val = dataPath + 'valFeatures/'
+label_root_val  = dataPath + 'valLabels/'
 
 ### Model placeholders ###
 next_feat_pl = tf.placeholder(tf.float32,[None,mp.NUM_CLASSES],name='next_feat_pl')
@@ -113,7 +115,7 @@ with tf.Session() as sess:
 	saver = tf.train.Saver()
 
 	firstRun = True
-	for epoch in range(1,mp.MAX_EPOCHS):
+	for epoch in range(1,mp.MAX_EPOCHS+1):
 		tic = time.time()
 		finalPreds = np.empty((0,mp.NUM_CLASSES))
 		iter = 0
@@ -128,7 +130,7 @@ with tf.Session() as sess:
 
 				features,_ = FeatureExtraction.FeatureExtraction(filePathFeat,mp.AUDIO_dB_SPL,mp.NFFT,mp.STFT_OVERLAP,mp.NUMBER_BINS,featMean,featStd)
 
-				labels,_ = FeatureExtraction.FeatureExtraction(filePathLabel.replace('feat','ref'),mp.AUDIO_dB_SPL,mp.NFFT,mp.STFT_OVERLAP,mp.NUMBER_BINS,featMean,featStd)
+				labels,_ = FeatureExtraction.FeatureExtraction(filePathLabel.replace('bcm','ref'),mp.AUDIO_dB_SPL,mp.NFFT,mp.STFT_OVERLAP,mp.NUMBER_BINS,featMean,featStd)
 
 				idx1Train = 0
 
@@ -178,7 +180,7 @@ with tf.Session() as sess:
 
 				features_val,_ = FeatureExtraction.FeatureExtraction(filePathFeat_val,mp.AUDIO_dB_SPL,mp.NFFT,mp.STFT_OVERLAP,mp.NUMBER_BINS,featMean,featStd)
 
-				labels_val,_ = FeatureExtraction.FeatureExtraction(filePathRef_val.replace('feat','ref'),mp.AUDIO_dB_SPL,mp.NFFT,mp.STFT_OVERLAP,mp.NUMBER_BINS,featMean,featStd)
+				labels_val,_ = FeatureExtraction.FeatureExtraction(filePathRef_val.replace('bcm','ref'),mp.AUDIO_dB_SPL,mp.NFFT,mp.STFT_OVERLAP,mp.NUMBER_BINS,featMean,featStd)
 
 				idx1Val = 0
 
@@ -246,7 +248,6 @@ with tf.Session() as sess:
 			summ = sess.run(tf_loss_summary,feed_dict={loss_sum: val_loss_mean})
 			writer_val.add_summary(summ, epoch)
 
-
 			finalPreds = np.flipud(finalPreds.T)
 			image_summary = sess.run(image_summary_op_output, feed_dict={tb_image: np.reshape(finalPreds, [-1, finalPreds.shape[0],finalPreds.shape[1], 1])})
 			writer_val.add_summary(image_summary, epoch)
@@ -274,7 +275,6 @@ with tf.Session() as sess:
 				trainingBool = False
 				validationBool = False
 
-
 			toc = time.time()
 			print(np.round(toc-tic,2),"s")
 			print()
@@ -284,4 +284,4 @@ with tf.Session() as sess:
 	writer_val.close()
 	print('Training done!')
 
-import freezeModel
+#import freezeModel

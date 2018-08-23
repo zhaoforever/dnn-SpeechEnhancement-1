@@ -1,5 +1,5 @@
 ## Hyper- and model parameters ###
-MAX_EPOCHS = 5
+MAX_EPOCHS = 10
 BATCH_SIZE = 16
 LEARNING_RATE = 0.0001
 KEEP_PROB_TRAIN = 0.75
