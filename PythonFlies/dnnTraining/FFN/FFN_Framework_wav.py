@@ -9,7 +9,7 @@ import time
 import imp
 ### Our functions ###
 import FFN_Model_Cond_Dropout
-import FeatureExtraction
+import featureProcessing
 import dataStatistics
 import modelParameters as mp
 mp = imp.reload(mp)
@@ -128,9 +128,9 @@ with tf.Session() as sess:
 				filePathFeat = feat_root_train + '/' + file
 				filePathLabel = label_root_train + '/' + file
 
-				features,_ = FeatureExtraction.FeatureExtraction(filePathFeat,mp.AUDIO_dB_SPL,mp.NFFT,mp.STFT_OVERLAP,mp.NUMBER_BINS,featMean,featStd)
+				features,_ = featureProcessing.featureExtraction(filePathFeat,mp.AUDIO_dB_SPL,mp.NFFT,mp.STFT_OVERLAP,mp.NUMBER_BINS,featMean,featStd)
 
-				labels,_ = FeatureExtraction.FeatureExtraction(filePathLabel.replace('bcm','ref'),mp.AUDIO_dB_SPL,mp.NFFT,mp.STFT_OVERLAP,mp.NUMBER_BINS,featMean,featStd)
+				labels,_ = featureProcessing.featureExtraction(filePathLabel.replace('bcm','ref'),mp.AUDIO_dB_SPL,mp.NFFT,mp.STFT_OVERLAP,mp.NUMBER_BINS,featMean,featStd)
 
 				idx1Train = 0
 
@@ -178,9 +178,9 @@ with tf.Session() as sess:
 				filePathFeat_val = feat_root_val + '/' + file
 				filePathRef_val = label_root_val + '/' + file
 
-				features_val,_ = FeatureExtraction.FeatureExtraction(filePathFeat_val,mp.AUDIO_dB_SPL,mp.NFFT,mp.STFT_OVERLAP,mp.NUMBER_BINS,featMean,featStd)
+				features_val,_ = featureProcessing.featureExtraction(filePathFeat_val,mp.AUDIO_dB_SPL,mp.NFFT,mp.STFT_OVERLAP,mp.NUMBER_BINS,featMean,featStd)
 
-				labels_val,_ = FeatureExtraction.FeatureExtraction(filePathRef_val.replace('bcm','ref'),mp.AUDIO_dB_SPL,mp.NFFT,mp.STFT_OVERLAP,mp.NUMBER_BINS,featMean,featStd)
+				labels_val,_ = featureProcessing.featureExtraction(filePathRef_val.replace('bcm','ref'),mp.AUDIO_dB_SPL,mp.NFFT,mp.STFT_OVERLAP,mp.NUMBER_BINS,featMean,featStd)
 
 				idx1Val = 0
 

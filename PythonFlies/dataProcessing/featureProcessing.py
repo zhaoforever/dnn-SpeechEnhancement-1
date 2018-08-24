@@ -1,7 +1,7 @@
 import numpy as np
 import utils
 
-def FeatureExtraction(filePathFeat,AUDIO_dB_SPL,NFFT,STFT_OVERLAP,numBin,featMean,featStd):
+def featureExtraction(filePathFeat,AUDIO_dB_SPL,NFFT,STFT_OVERLAP,numBin,featMean,featStd):
 	#  Feature Extraction function
 	#   filePathFeat   : filepath name [string]
 	#   AUDIO_dB_SPL   : dB SPL value to adjust SNR level
@@ -25,3 +25,15 @@ def FeatureExtraction(filePathFeat,AUDIO_dB_SPL,NFFT,STFT_OVERLAP,numBin,featMea
     features = features[:,0:numBin]
 
     return features,feature_phi
+
+def features2samples(features_abs,features_phi,featMean,featStd,fs,NFFT,STFT_OVERLAP):
+
+	features_abs = (features_abs * featStd)
+	features_abs = (features_abs + featMean)
+	features_abs = 10**(features_abs)-1e-7
+
+	y = utils.ISTFT(features_abs,features_phi,fs,NFFT,int(NFFT*STFT_OVERLAP))
+	y = adjustSNR(y,60)
+	y = np.float32(y)
+
+	return y
