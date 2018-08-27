@@ -14,28 +14,43 @@ import dataStatistics
 import modelParameters as mp
 mp = imp.reload(mp)
 
+
+### EMAIL SETUP ###
+import smtplib
+server = smtplib.SMTP('smtp.gmail.com',587)
+server.ehlo()
+server.starttls()
+server.ehlo()
+server.login('mhhp.python@gmail.com','Dnn123Rocks')
+msg = 'Training is done!'
+
+server.sendmail('mhhp.python@gmail.com','mhhp.python@gmail.com',msg)
+
+
+
+
+
 tf.reset_default_graph()
 
 ### Path to dataset ###
-dataPath = "C:/Users/mhp/Documents/DNN_Datasets/"
+dataPath = "C:/Users/mhp/Documents/DNN_Datasets/bcmRecordings/"
 #dataPath = "C:/Users/TobiasToft/Documents/dataset8_MultiTfNoise/"
-feat_root_train = dataPath + "TIMIT_train_feat1/"
-label_root_train = dataPath + "TIMIT_train_ref1/"
+feat_root_train = dataPath + "trainingInput/"
+label_root_train = dataPath + "trainingReference/"
 
-feat_root_val = dataPath + 'TIMIT_val_feat/'
-label_root_val  = dataPath + 'TIMIT_val_ref/'
+feat_root_val = dataPath + 'validationInput/'
+label_root_val  = dataPath + 'validationReference/'
 
 ### Model placeholders ###
-next_feat_pl = tf.placeholder(tf.float32,[None,mp.NUM_CLASSES],name='next_feat_pl')
-next_label_pl=tf.placeholder(tf.float32,[None,mp.NUM_CLASSES],name='next_label_pl')
-
+next_feat_pl = tf.placeholder(tf.float32,[None,mp.NUMBER_BINS],name='next_feat_pl')
+next_label_pl=tf.placeholder(tf.float32,[None,mp.NUMBER_BINS],name='next_label_pl')
 
 keepProb = tf.placeholder_with_default(1.0,shape=None,name='keepProb')
 
 is_train = tf.placeholder_with_default(False,shape=None,name="is_train")
 
 ### Model definition ###
-preds = FFN_Model_Cond_Dropout.defineFFN(next_feat_pl,mp.NUM_UNITS,mp.NUM_CLASSES,keepProb,is_train)
+preds = FFN_Model_Cond_Dropout.defineFFN(next_feat_pl,mp.NUM_UNITS,mp.NUMBER_BINS,keepProb,is_train)
 
 ### Optimizer ###
 loss = tf.losses.mean_squared_error(next_label_pl,preds)
@@ -118,12 +133,12 @@ with tf.Session() as sess:
 	writer_train = tf.summary.FileWriter('logs/train/', sess.graph)
 	writer_val = tf.summary.FileWriter('logs/val/', sess.graph)
 	sess.run(tf.global_variables_initializer())
-	saver = tf.train.Saver()
+	saver = tf.train.Saver(max_to_keep=3)
 
 	firstRun = True
 	for epoch in range(1,mp.MAX_EPOCHS+1):
 		tic = time.time()
-		finalPreds = np.empty((0,mp.NUM_CLASSES))
+		finalPreds = np.empty((0,mp.NUMBER_BINS))
 		iter = 0
 		if trainingBool:
 			train_loss_mean = []
@@ -289,5 +304,6 @@ with tf.Session() as sess:
 	writer_train.close()
 	writer_val.close()
 	print('Training done!')
+server.sendmail('mhhp.python@gmail.com','mhhp.python@gmail.com',msg)
 
 #import freezeModel

@@ -1,4 +1,4 @@
-model_checkpoint_path: "my_test_model6.ckpt"
-all_model_checkpoint_paths: "my_test_model1.ckpt"
-all_model_checkpoint_paths: "my_test_model3.ckpt"
-all_model_checkpoint_paths: "my_test_model6.ckpt"
+model_checkpoint_path: "my_test_model10.ckpt"
+all_model_checkpoint_paths: "my_test_model4.ckpt"
+all_model_checkpoint_paths: "my_test_model5.ckpt"
+all_model_checkpoint_paths: "my_test_model10.ckpt"

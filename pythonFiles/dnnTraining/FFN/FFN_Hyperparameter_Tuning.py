@@ -32,7 +32,7 @@ hp_hidden_units     = [256, 512, 1024, 2048]
 #random.shuffle(hp_hidden_units)
 hp_nfft             = [128, 256, 512]
 #random.shuffle(hp_nfft)
-hp_batch_size       = [16, 32, 64, 128]
+hp_batch_size       = [32]
 #random.shuffle(hp_batch_size)
 
 
@@ -80,18 +80,18 @@ for rate in hp_learning_rate:
                     loss_sum = tf.placeholder(tf.float32,shape=None,name='loss_summary')
                     tf_loss_summary = tf.summary.scalar('loss', loss_sum)
 
-                for g,v in grads_and_vars:
-                    if 'out' in v.name and 'kernel' in v.name:
-                        with tf.name_scope('gradients'):
-                            last_grad_norm = tf.sqrt(tf.reduce_mean(g**2))
-                            gradnorm_summary = tf.summary.scalar('grad_norm',last_grad_norm)
-                            break
-
-                with tf.name_scope('tb_images'):
-                    tb_image = tf.placeholder(tf.float32,shape=None,name='tb_image')
-                    image_summary_op_input  = tf.summary.image('images_input',tb_image, 1)
-                    image_summary_op_output = tf.summary.image('images_output',tb_image, 1)
-                    image_summary_op_target = tf.summary.image('images_target',tb_image, 1)
+                # for g,v in grads_and_vars:
+                #     if 'out' in v.name and 'kernel' in v.name:
+                #         with tf.name_scope('gradients'):
+                #             last_grad_norm = tf.sqrt(tf.reduce_mean(g**2))
+                #             gradnorm_summary = tf.summary.scalar('grad_norm',last_grad_norm)
+                #             break
+                #
+                # with tf.name_scope('tb_images'):
+                #     tb_image = tf.placeholder(tf.float32,shape=None,name='tb_image')
+                #     image_summary_op_input  = tf.summary.image('images_input',tb_image, 1)
+                #     image_summary_op_output = tf.summary.image('images_output',tb_image, 1)
+                #     image_summary_op_target = tf.summary.image('images_target',tb_image, 1)
 
                 ### Model variable initializer ###
                 train_loss = []
@@ -175,22 +175,22 @@ for rate in hp_learning_rate:
                                     next_label = np.reshape(next_label,[-1,labels.shape[1]])
 
 
-                                    if iter == 0:
-                                        fetches_train = [train_op,loss,gradnorm_summary]
-                                        feed_dict_train = {next_feat_pl: next_feat, next_label_pl: next_label, keepProb: mp.KEEP_PROB_TRAIN,is_train: True}
+                                    # if iter == 0:
+                                    #     fetches_train = [train_op,loss,gradnorm_summary]
+                                    #     feed_dict_train = {next_feat_pl: next_feat, next_label_pl: next_label, keepProb: mp.KEEP_PROB_TRAIN,is_train: True}
+                                    #
+                                    #     # running the traning optimizer
+                                    #     res_train = sess.run(fetches=fetches_train,
+                                    #     feed_dict=feed_dict_train)
+                                    #
+                                    #     writer_train.add_summary(res_train[2], epoch)
+                                    # else:
+                                    fetches_train = [train_op,loss]
+                                    feed_dict_train = {next_feat_pl: next_feat, next_label_pl: next_label, keepProb: mp.KEEP_PROB_TRAIN,is_train: True}
 
-                                        # running the traning optimizer
-                                        res_train = sess.run(fetches=fetches_train,
-                                        feed_dict=feed_dict_train)
-
-                                        writer_train.add_summary(res_train[2], epoch)
-                                    else:
-                                        fetches_train = [train_op,loss]
-                                        feed_dict_train = {next_feat_pl: next_feat, next_label_pl: next_label, keepProb: mp.KEEP_PROB_TRAIN,is_train: True}
-
-                                        # running the traning optimizer
-                                        res_train = sess.run(fetches=fetches_train,
-                                        feed_dict=feed_dict_train)
+                                    # running the traning optimizer
+                                    res_train = sess.run(fetches=fetches_train,
+                                    feed_dict=feed_dict_train)
 
                                     train_loss.append(res_train[1])
                                     iter =+ 1
@@ -233,22 +233,22 @@ for rate in hp_learning_rate:
                                     feed_dict=feed_dict_Val)
 
                                     val_loss.append(res_Val[0])
-                                    if valFirstFile:
-                                        finalPreds = np.concatenate((finalPreds,res_Val[1]),axis=0)
+                                    #if valFirstFile:
+                                        #finalPreds = np.concatenate((finalPreds,res_Val[1]),axis=0)
 
                                 ### Validation flag ###
                                 val_loss_mean.append(np.mean(val_loss))
                                 val_loss = []
 
-                                if firstRun:
-                                    features_val_image = np.flipud(features_val.T)
-                                    image_summary = sess.run(image_summary_op_input, feed_dict={tb_image: np.reshape(features_val_image, [-1, features_val_image.shape[0],features_val_image.shape[1], 1])})
-                                    writer_val.add_summary(image_summary, epoch)
-
-                                    labels_val_image = np.flipud(labels_val.T)
-                                    image_summary = sess.run(image_summary_op_target, feed_dict={tb_image: np.reshape(labels_val_image, [-1, labels_val_image.shape[0],labels_val_image.shape[1], 1])})
-                                    writer_val.add_summary(image_summary, epoch)
-                                firstRun = False
+                                # if firstRun:
+                                #     features_val_image = np.flipud(features_val.T)
+                                #     image_summary = sess.run(image_summary_op_input, feed_dict={tb_image: np.reshape(features_val_image, [-1, features_val_image.shape[0],features_val_image.shape[1], 1])})
+                                #     writer_val.add_summary(image_summary, epoch)
+                                #
+                                #     labels_val_image = np.flipud(labels_val.T)
+                                #     image_summary = sess.run(image_summary_op_target, feed_dict={tb_image: np.reshape(labels_val_image, [-1, labels_val_image.shape[0],labels_val_image.shape[1], 1])})
+                                #     writer_val.add_summary(image_summary, epoch)
+                                #firstRun = False
                                 valFirstFile = False
 
                             print('End of epoch:',epoch)
@@ -274,9 +274,9 @@ for rate in hp_learning_rate:
                             summ = sess.run(tf_loss_summary,feed_dict={loss_sum: val_loss_mean})
                             writer_val.add_summary(summ, epoch)
 
-                            finalPreds = np.flipud(finalPreds.T)
-                            image_summary = sess.run(image_summary_op_output, feed_dict={tb_image: np.reshape(finalPreds, [-1, finalPreds.shape[0],finalPreds.shape[1], 1])})
-                            writer_val.add_summary(image_summary, epoch)
+                            #finalPreds = np.flipud(finalPreds.T)
+                            #image_summary = sess.run(image_summary_op_output, feed_dict={tb_image: np.reshape(finalPreds, [-1, finalPreds.shape[0],finalPreds.shape[1], 1])})
+                            #writer_val.add_summary(image_summary, epoch)
 
                             ### Early stopping ###
                             if val_loss_mean < val_loss_best:
