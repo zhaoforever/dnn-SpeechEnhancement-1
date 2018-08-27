@@ -13,18 +13,11 @@ import featureProcessing
 import dataStatistics
 import modelParameters as mp
 mp = imp.reload(mp)
-
-
-### EMAIL SETUP ###
 import smtplib
-server = smtplib.SMTP('smtp.gmail.com',587)
-server.ehlo()
-server.starttls()
-server.ehlo()
-server.login('mhhp.python@gmail.com','Dnn123Rocks')
-msg = 'Training is done!'
 
-server.sendmail('mhhp.python@gmail.com','mhhp.python@gmail.com',msg)
+
+
+
 
 
 
@@ -304,6 +297,14 @@ with tf.Session() as sess:
 	writer_train.close()
 	writer_val.close()
 	print('Training done!')
+
+### EMAIL SETUP ###
+server = smtplib.SMTP('smtp.gmail.com',587)
+server.ehlo()
+server.starttls()
+server.ehlo()
+server.login('mhhp.python@gmail.com','Dnn123Rocks')
+msg = 'Training is done!'
 server.sendmail('mhhp.python@gmail.com','mhhp.python@gmail.com',msg)
 
 #import freezeModel
