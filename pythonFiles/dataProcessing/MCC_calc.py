@@ -9,14 +9,30 @@ import utils
 def MCC_calc(dataPath_true,dataPath_pred,NFFT):
     STFT_OVERLAP = 0.5
 
-    feat_true, fs = utils.wavToSamples(dataPath_true)
-    feat_true,_,_,_ = utils.STFT(feat_true,fs,NFFT,int(NFFT*STFT_OVERLAP))
-    feat_true = np.float32(feat_true)
-    #feat_true = np.array(feat_true)
 
     feat_pred, fs = utils.wavToSamples(dataPath_pred)
+    #print(len(feat_pred))
+
+    feat_true, fs = utils.wavToSamples(dataPath_true)
+    #print(len(feat_true))
+
+
+    lenPred = len(feat_pred)
+    lenRef = len(feat_true)
+    if lenRef < lenPred:
+        feat_true = np.concatenate((feat_true,np.zeros(lenPred-lenRef)))
+    elif lenPred < lenRef:
+        feat_pred = np.concatenate((feat_pred,np.zeros(lenRef-lenPred)))
+
     feat_pred,_,_,_ = utils.STFT(feat_pred,fs,NFFT,int(NFFT*STFT_OVERLAP))
     feat_pred = np.float32(feat_pred)
+
+    feat_true,_,_,_ = utils.STFT(feat_true,fs,NFFT,int(NFFT*STFT_OVERLAP))
+    feat_true = np.float32(feat_true)
+
+    #feat_true = np.array(feat_true)
+
+
     #feat_pred = np.array(feat_pred)
 
 

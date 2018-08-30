@@ -40,9 +40,11 @@ def wavToSamples(wav_file):
 	return wav_data, fs
 
 def STFT(x,fs,wL,nOverlap):
-
-	f, t, Zxx = signal.stft(x, fs, nperseg=wL,noverlap=nOverlap,return_onesided=True)
-
+	if signal.check_COLA('hann',wL,nOverlap):
+		f, t, Zxx = signal.stft(x, fs, nperseg=wL,noverlap=nOverlap,return_onesided=True)
+	else:
+		print('COLA constrain not met! Change STFT parameters!')
+		return
 	#Zxx_abs = np.abs(Zxx)
 	#Zxx_phi = np.arctan2(Zxx.imag,Zxx.real)
 

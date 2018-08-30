@@ -1,5 +1,5 @@
 import sys
-sys.path.append("C:/Users/Mikkel/Desktop/dnn-SpeechEnhancement/PythonFlies/dataProcessing/")
+sys.path.append("C:/Users/mhp/Documents/GitHub/dnn-SpeechEnhancement/pythonFiles/dataProcessing/")
 #sys.path.append("C:/Users/TobiasToft/Documents/GitHub/dnn-SpeechEnhancement/PythonFlies/dataProcessing/")
 import tensorflow as tf
 import os
@@ -7,30 +7,34 @@ import numpy as np
 import random
 import time
 import matplotlib.pyplot as plt
+import sounddevice as sd
+import scipy.signal as dsp
 ### Our functions ###
 import FFN_Model_Cond_Dropout
-import FeatureExtraction
+import featureExtraction
 import dataStatistics
 import modelParameters as mp
+import utils
 
 tf.reset_default_graph()
 
-dataPath = "C:/Users/s123028/dataset8_MulitTfNoise/"
-trainingStats = np.load(dataPath + "trainingStats.npy")
+savedModelPath = "./savedModelsTrain/"
+trainingStats = np.load(savedModelPath + "trainingStatistics.npy")
 
 featMean = trainingStats[0]
 featStd = trainingStats[1]
 
-filePath_input = "C:/Users/s123028/dataset8_MulitTfNoise/TIMIT_val_feat/748_val_feat.wav"
-filePath_target = "C:/Users/s123028/dataset8_MulitTfNoise/TIMIT_val_ref/748_val_ref.wav"
+filePath_input = "C:/Users/mhp/Documents/DNN_Datasets/bcmRecordings/testInput/tobc_01_feat_11.wav"
+filePath_target = "C:/Users/mhp/Documents/DNN_Datasets/bcmRecordings/testReference/tobc_01_ref_11.wav"
 
 ### Feature Extraction ###
-features,features_phi = FeatureExtraction.FeatureExtraction(filePath_input,mp.AUDIO_dB_SPL,mp.NFFT,mp.STFT_OVERLAP,mp.NUMBER_BINS,featMean,featStd)
+print(dsp.check_COLA('hann',mp.NFFT,int(mp.NFFT*mp.STFT_OVERLAP)))
+features,features_phi = featureExtraction.featureExtraction(filePath_input,mp.AUDIO_dB_SPL,mp.NFFT,mp.STFT_OVERLAP,mp.NUM_CLASSES,featMean,featStd)
 
-labels,labels_phi = FeatureExtraction.FeatureExtraction(filePath_target,mp.AUDIO_dB_SPL,mp.NFFT,mp.STFT_OVERLAP,mp.NUMBER_BINS,featMean,featStd)
+labels,labels_phi = featureExtraction.featureExtraction(filePath_target,mp.AUDIO_dB_SPL,mp.NFFT,mp.STFT_OVERLAP,mp.NUM_CLASSES,featMean,featStd)
 
 ### UNFREEZE MODEL ###
-frozen_graph="./savedModelsWav/myFrozenModel.pb"
+frozen_graph= savedModelPath + "myFrozenModel.pb"
 with tf.gfile.GFile(frozen_graph, "rb") as f:
     restored_graph_def = tf.GraphDef()
     restored_graph_def.ParseFromString(f.read())
@@ -62,21 +66,42 @@ print('Training done!')
 
 
 
+#
+# plt.pcolormesh(features.T)
+# plt.title('STFT Magnitude')
+# plt.ylabel('Frequency [Hz]')
+# plt.xlabel('Time [sec]')
+# plt.show()
+#
+# plt.pcolormesh(finalPreds0)
+# plt.title('STFT Magnitude')
+# plt.ylabel('Frequency [Hz]')
+# plt.xlabel('Time [sec]')
+# plt.show()
+#
+# plt.pcolormesh(labels.T)
+# plt.title('STFT Magnitude')
+# plt.ylabel('Frequency [Hz]')
+# plt.xlabel('Time [sec]')
+# plt.show()
 
-plt.pcolormesh(features.T)
-plt.title('STFT Magnitude')
-plt.ylabel('Frequency [Hz]')
-plt.xlabel('Time [sec]')
-plt.show()
 
-plt.pcolormesh(finalPreds0)
-plt.title('STFT Magnitude')
-plt.ylabel('Frequency [Hz]')
-plt.xlabel('Time [sec]')
-plt.show()
 
-plt.pcolormesh(labels.T)
-plt.title('STFT Magnitude')
-plt.ylabel('Frequency [Hz]')
-plt.xlabel('Time [sec]')
-plt.show()
+if not finalPreds0.shape == features_phi.shape:
+    fillFreqs = np.full((features_phi.shape[0] - finalPreds0.shape[0],features_phi.shape[1]),np.min(finalPreds0))
+    finalPreds0 = np.concatenate((finalPreds0,fillFreqs),axis=0)
+
+finalPreds1 = (finalPreds0 * featStd)
+finalPreds2 = (finalPreds1 + featMean)
+finalPreds3 = 10**(finalPreds2)-1e-7
+finalPreds3.shape
+features_phi.shape
+
+
+
+y = utils.ISTFT(finalPreds3,features_phi,12000,mp.NFFT,int(mp.NFFT*mp.STFT_OVERLAP))
+y = utils.adjustSNR(y,60)
+
+plt.plot(y)
+
+sd.play(y,12000)
