@@ -16,13 +16,6 @@ mp = imp.reload(mp)
 import smtplib
 
 
-
-
-
-
-
-
-
 tf.reset_default_graph()
 
 ### Path to dataset ###

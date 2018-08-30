@@ -1,4 +1,5 @@
 import sys
+#sys.path.append("/home/paperspace/Desktop/pythonFiles/dataProcessing/")
 sys.path.append("C:/Users/mhp/Documents/GitHub/dnn-SpeechEnhancement/pythonFiles/dataProcessing/")
 #sys.path.append("C:/Users/TobiasToft/Documents/GitHub/dnn-SpeechEnhancement/PythonFlies/dataProcessing/")
 import tensorflow as tf
@@ -8,6 +9,8 @@ import pandas as pd
 import random
 import time
 import imp
+import matplotlib.pyplot as plt
+import scipy.signal as dsp
 ### Our functions ###
 import FFN_Model_Cond_Dropout
 import featureProcessing
@@ -17,8 +20,15 @@ mp = imp.reload(mp)
 
 
 ### Path to dataset ###
-dataPath = "C:/Users/mhp/Documents/DNN_Datasets/"
+#dataPath = "/home/paperspace/Desktop/datasets/bcmRecordings/"
+dataPath = "C:/Users/mhp/Documents/DNN_Datasets/TIMIT/"
 #dataPath = "C:/Users/TobiasToft/Documents/dataset8_MultiTfNoise/"
+# feat_root_train = dataPath + "trainingInput/"
+# label_root_train = dataPath + "trainingReference/"
+#
+# feat_root_val = dataPath + 'validationInput/'
+# label_root_val  = dataPath + 'validationReference/'
+
 feat_root_train = dataPath + "TIMIT_train_feat1/"
 label_root_train = dataPath + "TIMIT_train_ref1/"
 
@@ -27,22 +37,30 @@ label_root_val  = dataPath + 'TIMIT_val_ref/'
 
 ### Hyperparameters for tunig ###
 hp_learning_rate    = [0.0001, 0.00001, 0.000001]
-#random.shuffle(hp_learning_rate)
-hp_hidden_units     = [256, 512, 1024, 2048]
-#random.shuffle(hp_hidden_units)
+random.shuffle(hp_learning_rate)
+hp_hidden_units     = [256, 512, 1024]#[256, 512, 1024, 2048]
+random.shuffle(hp_hidden_units)
 hp_nfft             = [128, 256, 512]
-#random.shuffle(hp_nfft)
+random.shuffle(hp_nfft)
 hp_batch_size       = [32]
 #random.shuffle(hp_batch_size)
 
+### Removes old Tensorboard event files ###
+for root, dirs, files in os.walk('./logs/', topdown=False):
+    for name in files:
+        os.remove(os.path.join(root, name))
+    for name in dirs:
+        os.rmdir(os.path.join(root, name))
 
-hp_tuning_results = np.empty((5))
-
+hp_tuning_results = np.empty((7))
+hp_run = 1
+movingAverageOrder = 3
 for rate in hp_learning_rate:
     for units in hp_hidden_units:
         for nfft in hp_nfft:
             for batch in hp_batch_size:
                 tf.reset_default_graph()
+
                 numberClasses = int(nfft/2+1)
                 numberOfBins = numberClasses
                 ### Model placeholders ###
@@ -64,7 +82,7 @@ for rate in hp_learning_rate:
 
                 if mp.DECAYING_LEARNING_RATE:
                     learning_rate = tf.train.exponential_decay(rate, global_step,
-                                                           100000, 0.96, staircase=True)
+                                                           500000, 0.96, staircase=True)
                     rate_sum = tf.placeholder(tf.float32,shape=None,name='learning_rate_sum')
                     tf_learning_rate_summary = tf.summary.scalar('Learning_Rate', rate_sum)
 
@@ -80,24 +98,14 @@ for rate in hp_learning_rate:
                     loss_sum = tf.placeholder(tf.float32,shape=None,name='loss_summary')
                     tf_loss_summary = tf.summary.scalar('loss', loss_sum)
 
-                # for g,v in grads_and_vars:
-                #     if 'out' in v.name and 'kernel' in v.name:
-                #         with tf.name_scope('gradients'):
-                #             last_grad_norm = tf.sqrt(tf.reduce_mean(g**2))
-                #             gradnorm_summary = tf.summary.scalar('grad_norm',last_grad_norm)
-                #             break
-                #
-                # with tf.name_scope('tb_images'):
-                #     tb_image = tf.placeholder(tf.float32,shape=None,name='tb_image')
-                #     image_summary_op_input  = tf.summary.image('images_input',tb_image, 1)
-                #     image_summary_op_output = tf.summary.image('images_output',tb_image, 1)
-                #     image_summary_op_target = tf.summary.image('images_target',tb_image, 1)
 
                 ### Model variable initializer ###
                 train_loss = []
                 train_loss_mean = []
                 val_loss = []
                 val_loss_mean = []
+                val_loss_moving = []
+                val_loss_last_mean = 1000
                 val_loss_best = 1000 # large initial value
                 bestCount = 0
                 trainingBool = True
@@ -116,27 +124,30 @@ for rate in hp_learning_rate:
                     mp.DATASET_SIZE_VAL = numFilesVal
                 allFilesVal = allFilesVal[0:mp.DATASET_SIZE_VAL]
 
-                ### Removes old Tensorboard event files ###
-                allEventFiles = os.listdir('./logs/train/')
-                for file in allEventFiles:
-                    os.remove('./logs/train/'+file)
-
-                allEventFiles = os.listdir('./logs/val/')
-                for file in allEventFiles:
-                    os.remove('./logs/val/'+file)
-
 
 
                 ### Data statistics ###
+                print('Calculating data statistics ...')
                 tic = time.time()
                 featMean, featStd = dataStatistics.calcMeanAndStd(label_root_train,mp.DATASET_SIZE_TRAIN,nfft,mp.STFT_OVERLAP,mp.BIN_WIZE)
                 toc = time.time()
                 print(np.round(toc-tic,2),"secs to calc data stats")
 
+
+                print('Hyperparameter tuning run: ' + str(hp_run))
+                print('Rate: ' + str(rate) + ' Hidden Units: ' + str(units) + ' FFT Size: ' + str(nfft))
+
                 print('Training...')
+
                 with tf.Session() as sess:
-                    writer_train = tf.summary.FileWriter('logs/train/', sess.graph)
-                    writer_val = tf.summary.FileWriter('logs/val/', sess.graph)
+                    if not os.path.exists('logs/run' + str(hp_run)):
+                        os.mkdir('logs/run' + str(hp_run))
+                        os.mkdir('logs/run' + str(hp_run) + '/train')
+                        os.mkdir('logs/run' + str(hp_run) + '/val')
+                        writer_train = tf.summary.FileWriter('logs/run' + str(hp_run) + '/train', sess.graph)
+                        writer_val = tf.summary.FileWriter('logs/run' + str(hp_run) + '/val', sess.graph)
+                        writer_val_smooth = tf.summary.FileWriter('logs/run' + str(hp_run) + '/val_smooth', sess.graph)
+
                     sess.run(tf.global_variables_initializer())
                     saver = tf.train.Saver(max_to_keep=1)
 
@@ -174,17 +185,6 @@ for rate in hp_learning_rate:
                                     next_feat = np.reshape(next_feat,[-1,features.shape[1]])
                                     next_label = np.reshape(next_label,[-1,labels.shape[1]])
 
-
-                                    # if iter == 0:
-                                    #     fetches_train = [train_op,loss,gradnorm_summary]
-                                    #     feed_dict_train = {next_feat_pl: next_feat, next_label_pl: next_label, keepProb: mp.KEEP_PROB_TRAIN,is_train: True}
-                                    #
-                                    #     # running the traning optimizer
-                                    #     res_train = sess.run(fetches=fetches_train,
-                                    #     feed_dict=feed_dict_train)
-                                    #
-                                    #     writer_train.add_summary(res_train[2], epoch)
-                                    # else:
                                     fetches_train = [train_op,loss]
                                     feed_dict_train = {next_feat_pl: next_feat, next_label_pl: next_label, keepProb: mp.KEEP_PROB_TRAIN,is_train: True}
 
@@ -201,8 +201,8 @@ for rate in hp_learning_rate:
                             #### Validation ####
                             valFirstFile = True
                             for file in allFilesVal:
-                                filePathFeat_val = feat_root_val + '/' + file
-                                filePathRef_val = label_root_val + '/' + file
+                                filePathFeat_val = feat_root_val + file
+                                filePathRef_val = label_root_val + file
 
                                 features_val,_ = featureProcessing.featureExtraction(filePathFeat_val,mp.AUDIO_dB_SPL,nfft,mp.STFT_OVERLAP,numberOfBins,featMean,featStd)
 
@@ -233,22 +233,11 @@ for rate in hp_learning_rate:
                                     feed_dict=feed_dict_Val)
 
                                     val_loss.append(res_Val[0])
-                                    #if valFirstFile:
-                                        #finalPreds = np.concatenate((finalPreds,res_Val[1]),axis=0)
 
                                 ### Validation flag ###
                                 val_loss_mean.append(np.mean(val_loss))
                                 val_loss = []
 
-                                # if firstRun:
-                                #     features_val_image = np.flipud(features_val.T)
-                                #     image_summary = sess.run(image_summary_op_input, feed_dict={tb_image: np.reshape(features_val_image, [-1, features_val_image.shape[0],features_val_image.shape[1], 1])})
-                                #     writer_val.add_summary(image_summary, epoch)
-                                #
-                                #     labels_val_image = np.flipud(labels_val.T)
-                                #     image_summary = sess.run(image_summary_op_target, feed_dict={tb_image: np.reshape(labels_val_image, [-1, labels_val_image.shape[0],labels_val_image.shape[1], 1])})
-                                #     writer_val.add_summary(image_summary, epoch)
-                                #firstRun = False
                                 valFirstFile = False
 
                             print('End of epoch:',epoch)
@@ -257,31 +246,43 @@ for rate in hp_learning_rate:
                             ### End of epoch rutines ###
                             train_loss_mean = np.mean(train_loss_mean)
                             val_loss_mean = np.mean(val_loss_mean)
+                            val_loss_moving.append(val_loss_mean)
+                            if len(val_loss_moving) > mp.MOVING_AVERAGE_ORDER:#*3:
+                                #val_loss_running = dsp.filtfilt(np.ones(mp.MOVING_AVERAGE_ORDER)/mp.MOVING_AVERAGE_ORDER,1,val_loss_moving,padtype='constant')
+                                #val_loss_last_mean = val_loss_running[-1]
+                                val_loss_last_mean = np.mean(val_loss_moving[-mp.MOVING_AVERAGE_ORDER:])
+                            else:
+                                val_loss_last_mean = np.mean(val_loss_moving)
+
+
                             print('Number of global steps: %s' % sess.run(tf.train.get_global_step()))
                             print("Training loss: ", train_loss_mean, " Validation loss: ", val_loss_mean)
 
                             ### Loss summary to Tensorboard ###
                             if mp.DECAYING_LEARNING_RATE:
-                                rate = np.float32(sess.run(learning_rate))
-                                summ = sess.run(tf_learning_rate_summary,feed_dict={rate_sum: rate})
+                                rate_tb = np.float32(sess.run(learning_rate))
+                                summ = sess.run(tf_learning_rate_summary,feed_dict={rate_sum: rate_tb})
                                 writer_train.add_summary(summ, epoch)
-                            else:
-                                rate = learning_rate
+                                writer_train.flush()
 
-                            summ = sess.run(tf_loss_summary,feed_dict={loss_sum: train_loss_mean})
-                            writer_train.add_summary(summ, epoch)
 
-                            summ = sess.run(tf_loss_summary,feed_dict={loss_sum: val_loss_mean})
-                            writer_val.add_summary(summ, epoch)
+                            summ1 = sess.run(tf_loss_summary,feed_dict={loss_sum: train_loss_mean})
+                            writer_train.add_summary(summ1, epoch)
+                            writer_train.flush()
 
-                            #finalPreds = np.flipud(finalPreds.T)
-                            #image_summary = sess.run(image_summary_op_output, feed_dict={tb_image: np.reshape(finalPreds, [-1, finalPreds.shape[0],finalPreds.shape[1], 1])})
-                            #writer_val.add_summary(image_summary, epoch)
+                            summ2 = sess.run(tf_loss_summary,feed_dict={loss_sum: val_loss_mean})
+                            writer_val.add_summary(summ2, epoch)
+                            writer_val.flush()
+
+                            summ3 = sess.run(tf_loss_summary,feed_dict={loss_sum: val_loss_last_mean})
+                            writer_val_smooth.add_summary(summ3, epoch)
+                            writer_val_smooth.flush()
+
 
                             ### Early stopping ###
-                            if val_loss_mean < val_loss_best:
-
-                                val_loss_best = val_loss_mean
+                            print('Best: ' + str(val_loss_best) + ' Current: ' + str(val_loss_mean) + ' Mean: ' + str(val_loss_last_mean))
+                            if val_loss_last_mean < val_loss_best:
+                                val_loss_best = val_loss_last_mean
 
                                 trainingBool = True
                                 validationBool = True
@@ -289,7 +290,7 @@ for rate in hp_learning_rate:
                                 bestCount = 0
 
                                 # Save model
-                                saveStr = './savedModels_HP_Tune/hp_chechpoint' + str(rate) + '_' + str(units) + '_' + str(nfft) + '_' + str(batch) + '.ckpt'
+                                saveStr = './savedModels_HP_Tune/hp_chechpoint' + str(rate) + '_' + str(units) + '_' + str(nfft) + '_' + str(batch) + '_' + str(epoch) + '.ckpt'
                                 saver.save(sess, saveStr)
 
                             elif bestCount < mp.STOP_COUNT:
@@ -308,13 +309,17 @@ for rate in hp_learning_rate:
                             break
                     writer_train.close()
                     writer_val.close()
+                    writer_val_smooth.close()
 
                     #hp_tuning_results = np.concatenate((hp_tuning_results,np.asarray([rate,units,nfft,batch,val_loss_best])),axis=0)
-                    if hp_tuning_results.all():
-                        hp_tuning_results = np.row_stack((hp_tuning_results,np.asarray([rate,units,nfft,batch,val_loss_best])))
-                    else:
-                        hp_tuning_results = np.asarray([rate,units,nfft,batch,val_loss_best])
+                    hp_tuning_results = np.row_stack((hp_tuning_results,np.asarray([hp_run,rate,units,nfft,batch,val_loss_best,epoch])))
+                    hp_run += 1
 
+                    pandaArray = pd.DataFrame(hp_tuning_results)
+                    pandaArray.columns = ['Run Number','Learning Rate','Hidden Units','FFT Size','Batch Size','Validation Loss','Number of epochs']
+                    pandaArray = pandaArray.sort_values(by='Validation Loss')
+                    resultsFilePath = 'hyperparameterTuningResults.xlsx'
+                    pandaArray.to_excel(resultsFilePath,index=False)
 
 
 
@@ -323,7 +328,7 @@ print('Training done!')
 
 
 pandaArray = pd.DataFrame(hp_tuning_results)
-pandaArray.columns = ['Learning Rate','Hidden Units','FFT Size','Batch Size','Validation Loss']
+pandaArray.columns = ['Run Number','Learning Rate','Hidden Units','FFT Size','Batch Size','Validation Loss','Number of epochs']
 pandaArray = pandaArray.sort_values(by='Validation Loss')
 resultsFilePath = 'hyperparameterTuningResults.xlsx'
 pandaArray.to_excel(resultsFilePath,index=False)

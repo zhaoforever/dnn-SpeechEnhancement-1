@@ -1,5 +1,6 @@
 import numpy as np
 import utils
+from scipy.io import wavfile
 
 def featureExtraction(filePathFeat,AUDIO_dB_SPL,NFFT,STFT_OVERLAP,numBin,featMean,featStd):
 	#  Feature Extraction function
@@ -28,12 +29,28 @@ def featureExtraction(filePathFeat,AUDIO_dB_SPL,NFFT,STFT_OVERLAP,numBin,featMea
 
 def features2samples(features_abs,features_phi,featMean,featStd,fs,NFFT,STFT_OVERLAP):
 
-	features_abs = (features_abs * featStd)
-	features_abs = (features_abs + featMean)
-	features_abs = 10**(features_abs)-1e-7
+    # features_abs  : Predictions from the network - shape = (FFT Bins, Time frames)
+    # features_phi  : Original phase from the feature extraction - shape = (FFT Bins, Time frames)
 
-	y = utils.ISTFT(features_abs,features_phi,fs,NFFT,int(NFFT*STFT_OVERLAP))
-	y = adjustSNR(y,60)
-	y = np.float32(y)
+    if not features_abs.shape == features_phi.shape:
+        fillFreqs = np.full((features_phi.shape[0] - features_abs.shape[0],features_phi.shape[1]),np.min(features_abs))
+        features_abs = np.concatenate((features_abs,fillFreqs),axis=0)
 
-	return y
+    features_abs = (features_abs * featStd)
+    features_abs = (features_abs + featMean)
+    features_abs = 10**(features_abs)-1e-7
+
+    y = utils.ISTFT(features_abs,features_phi,fs,NFFT,int(NFFT*STFT_OVERLAP))
+    y = utils.adjustSNR(y,60)
+    y = np.float32(y)
+
+    return y
+
+def samples2wav(y,fs,filePathAndName):
+
+    y =  y*32767
+    y = y.astype(np.int16)
+    wavfile.write(filePathAndName,fs,y)
+
+
+    return
