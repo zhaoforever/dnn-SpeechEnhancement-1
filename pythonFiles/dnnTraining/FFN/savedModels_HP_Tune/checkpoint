@@ -1,2 +1,2 @@
-model_checkpoint_path: "hp_chechpoint1e-06_1024_512_32_100.ckpt"
-all_model_checkpoint_paths: "hp_chechpoint1e-06_1024_512_32_100.ckpt"
+model_checkpoint_path: "hp_chechpoint1e-06_1024_256_32_7.ckpt"
+all_model_checkpoint_paths: "hp_chechpoint1e-06_1024_256_32_7.ckpt"

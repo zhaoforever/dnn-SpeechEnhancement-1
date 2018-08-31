@@ -21,22 +21,17 @@ mp = imp.reload(mp)
 
 ### Path to dataset ###
 #dataPath = "/home/paperspace/Desktop/datasets/bcmRecordings/"
-dataPath = "C:/Users/mhp/Documents/DNN_Datasets/TIMIT/"
+dataPath = "C:/Users/mhp/Documents/DNN_Datasets/bcmRecordings/"
 #dataPath = "C:/Users/TobiasToft/Documents/dataset8_MultiTfNoise/"
-# feat_root_train = dataPath + "trainingInput/"
-# label_root_train = dataPath + "trainingReference/"
-#
-# feat_root_val = dataPath + 'validationInput/'
-# label_root_val  = dataPath + 'validationReference/'
+feat_root_train = dataPath + "trainingInput/"
+label_root_train = dataPath + "trainingReference/"
 
-feat_root_train = dataPath + "TIMIT_train_feat1/"
-label_root_train = dataPath + "TIMIT_train_ref1/"
+feat_root_val = dataPath + 'validationInput/'
+label_root_val  = dataPath + 'validationReference/'
 
-feat_root_val = dataPath + 'TIMIT_val_feat/'
-label_root_val  = dataPath + 'TIMIT_val_ref/'
 
 ### Hyperparameters for tunig ###
-hp_learning_rate    = [0.0001, 0.00001, 0.000001]
+hp_learning_rate    = [0.00001, 0.000001]
 random.shuffle(hp_learning_rate)
 hp_hidden_units     = [256, 512, 1024]#[256, 512, 1024, 2048]
 random.shuffle(hp_hidden_units)
@@ -155,13 +150,13 @@ for rate in hp_learning_rate:
                     for epoch in range(1,mp.MAX_EPOCHS+1):
                         tic = time.time()
                         finalPreds = np.empty((0,numberClasses))
-                        iter = 0
+
                         if trainingBool:
                             train_loss_mean = []
-                            val_loss_mean = []
 
                             random.shuffle(allFilesTrain)
                             for file in allFilesTrain:
+
                                 filePathFeat = feat_root_train + file
                                 filePathLabel = label_root_train + file
 
@@ -193,123 +188,127 @@ for rate in hp_learning_rate:
                                     feed_dict=feed_dict_train)
 
                                     train_loss.append(res_train[1])
-                                    iter =+ 1
 
+                                    currentGlobalStep = sess.run(tf.train.get_global_step())
+                                    ### Validate every x global step ###
+                                    if np.mod(currentGlobalStep,mp.VALID_EVERY) == 0:
+                                        #### Validation ####
+                                        valFirstFile = True
+                                        for file in allFilesVal:
+                                            filePathFeat_val = feat_root_val + file
+                                            filePathRef_val = label_root_val + file
+
+                                            features_val,_ = featureProcessing.featureExtraction(filePathFeat_val,mp.AUDIO_dB_SPL,nfft,mp.STFT_OVERLAP,numberOfBins,featMean,featStd)
+
+                                            labels_val,_ = featureProcessing.featureExtraction(filePathRef_val.replace('feat','ref'),mp.AUDIO_dB_SPL,nfft,mp.STFT_OVERLAP,numberOfBins,featMean,featStd)
+
+                                            idx1Val = 0
+
+                                            while ((idx1Val+batch) <= features_val.shape[0]):
+
+                                                ## Validating:
+                                                next_feat = np.empty((0))
+                                                next_label = np.empty((0))
+                                                for n in range(0,batch):
+                                                    next_feat = np.concatenate((next_feat,features_val[idx1Val,:]),axis=0)
+
+                                                    next_label = np.concatenate((next_label,labels_val[idx1Val,:]),axis=0)
+                                                    idx1Val +=1
+
+                                                next_feat = np.reshape(next_feat,[-1,features_val.shape[1]])
+                                                next_label = np.reshape(next_label,[-1,labels_val.shape[1]])
+
+                                                fetches_Val = [loss,preds]
+                                                feed_dict_Val = {next_feat_pl: next_feat, next_label_pl: next_label, keepProb: 1.0}
+
+
+                                                # running the validating run
+                                                res_Val = sess.run(fetches=fetches_Val,
+                                                feed_dict=feed_dict_Val)
+
+                                                val_loss.append(res_Val[0])
+
+                                            ### Validation flag ###
+                                            val_loss_mean.append(np.mean(val_loss))
+                                            val_loss = []
+
+                                            valFirstFile = False
+
+                                        ### Validation rutines ###
+                                        val_loss_mean = np.mean(val_loss_mean)
+                                        train_loss_mean.append(np.mean(train_loss))
+                                        val_loss_moving.append(val_loss_mean)
+                                        if len(val_loss_moving) > mp.MOVING_AVERAGE_ORDER:#*3:
+                                            #val_loss_running = dsp.filtfilt(np.ones(mp.MOVING_AVERAGE_ORDER)/mp.MOVING_AVERAGE_ORDER,1,val_loss_moving,padtype='constant')
+                                            #val_loss_last_mean = val_loss_running[-1]
+                                            val_loss_last_mean = np.mean(val_loss_moving[-mp.MOVING_AVERAGE_ORDER:])
+                                        else:
+                                            val_loss_last_mean = np.mean(val_loss_moving)
+
+
+                                        print('Number of global steps: %s' % currentGlobalStep)
+                                        print("Training loss: ", np.mean(train_loss_mean), " Validation loss: ", val_loss_mean)
+
+                                        ### Loss summary to Tensorboard ###
+                                        if mp.DECAYING_LEARNING_RATE:
+                                            rate_tb = np.float32(sess.run(learning_rate))
+                                            summ = sess.run(tf_learning_rate_summary,feed_dict={rate_sum: rate_tb})
+                                            writer_train.add_summary(summ, int(currentGlobalStep/mp.VALID_EVERY))
+                                            writer_train.flush()
+
+
+                                        summ1 = sess.run(tf_loss_summary,feed_dict={loss_sum: np.mean(train_loss_mean)})
+                                        writer_train.add_summary(summ1, int(currentGlobalStep/mp.VALID_EVERY))
+                                        writer_train.flush()
+
+                                        summ2 = sess.run(tf_loss_summary,feed_dict={loss_sum: val_loss_mean})
+                                        writer_val.add_summary(summ2, int(currentGlobalStep/mp.VALID_EVERY))
+                                        writer_val.flush()
+
+                                        summ3 = sess.run(tf_loss_summary,feed_dict={loss_sum: val_loss_last_mean})
+                                        writer_val_smooth.add_summary(summ3, int(currentGlobalStep/mp.VALID_EVERY))
+                                        writer_val_smooth.flush()
+
+
+                                        ### Early stopping ###
+                                        print('Best: ' + str(val_loss_best) + ' Current: ' + str(val_loss_mean) + ' Mean: ' + str(val_loss_last_mean))
+                                        print()
+                                        val_loss_mean = []
+                                        if val_loss_last_mean < val_loss_best:
+                                            val_loss_best = val_loss_last_mean
+
+                                            trainingBool = True
+                                            validationBool = True
+
+                                            bestCount = 0
+
+                                            # Save model
+                                            saveStr = './savedModels_HP_Tune/hp_chechpoint' + str(rate) + '_' + str(units) + '_' + str(nfft) + '_' + str(batch) + '_' + str(epoch) + '.ckpt'
+                                            saver.save(sess, saveStr)
+
+                                        elif bestCount < mp.STOP_COUNT:
+                                            trainingBool = True
+                                            validationBool = True
+
+                                            bestCount += 1
+                                        else:
+                                            trainingBool = False
+                                            validationBool = False
+
+                                # End of training loop
                                 train_loss_mean.append(np.mean(train_loss))
                                 train_loss = []
 
-                            #### Validation ####
-                            valFirstFile = True
-                            for file in allFilesVal:
-                                filePathFeat_val = feat_root_val + file
-                                filePathRef_val = label_root_val + file
 
-                                features_val,_ = featureProcessing.featureExtraction(filePathFeat_val,mp.AUDIO_dB_SPL,nfft,mp.STFT_OVERLAP,numberOfBins,featMean,featStd)
-
-                                labels_val,_ = featureProcessing.featureExtraction(filePathRef_val.replace('feat','ref'),mp.AUDIO_dB_SPL,nfft,mp.STFT_OVERLAP,numberOfBins,featMean,featStd)
-
-                                idx1Val = 0
-
-                                while ((idx1Val+batch) <= features_val.shape[0]):
-
-                                    ## Validating:
-                                    next_feat = np.empty((0))
-                                    next_label = np.empty((0))
-                                    for n in range(0,batch):
-                                        next_feat = np.concatenate((next_feat,features_val[idx1Val,:]),axis=0)
-
-                                        next_label = np.concatenate((next_label,labels_val[idx1Val,:]),axis=0)
-                                        idx1Val +=1
-
-                                    next_feat = np.reshape(next_feat,[-1,features_val.shape[1]])
-                                    next_label = np.reshape(next_label,[-1,labels_val.shape[1]])
-
-                                    fetches_Val = [loss,preds]
-                                    feed_dict_Val = {next_feat_pl: next_feat, next_label_pl: next_label, keepProb: 1.0}
-
-
-                                    # running the validating run
-                                    res_Val = sess.run(fetches=fetches_Val,
-                                    feed_dict=feed_dict_Val)
-
-                                    val_loss.append(res_Val[0])
-
-                                ### Validation flag ###
-                                val_loss_mean.append(np.mean(val_loss))
-                                val_loss = []
-
-                                valFirstFile = False
-
-                            print('End of epoch:',epoch)
-
-
-                            ### End of epoch rutines ###
-                            train_loss_mean = np.mean(train_loss_mean)
-                            val_loss_mean = np.mean(val_loss_mean)
-                            val_loss_moving.append(val_loss_mean)
-                            if len(val_loss_moving) > mp.MOVING_AVERAGE_ORDER:#*3:
-                                #val_loss_running = dsp.filtfilt(np.ones(mp.MOVING_AVERAGE_ORDER)/mp.MOVING_AVERAGE_ORDER,1,val_loss_moving,padtype='constant')
-                                #val_loss_last_mean = val_loss_running[-1]
-                                val_loss_last_mean = np.mean(val_loss_moving[-mp.MOVING_AVERAGE_ORDER:])
-                            else:
-                                val_loss_last_mean = np.mean(val_loss_moving)
-
-
-                            print('Number of global steps: %s' % sess.run(tf.train.get_global_step()))
-                            print("Training loss: ", train_loss_mean, " Validation loss: ", val_loss_mean)
-
-                            ### Loss summary to Tensorboard ###
-                            if mp.DECAYING_LEARNING_RATE:
-                                rate_tb = np.float32(sess.run(learning_rate))
-                                summ = sess.run(tf_learning_rate_summary,feed_dict={rate_sum: rate_tb})
-                                writer_train.add_summary(summ, epoch)
-                                writer_train.flush()
-
-
-                            summ1 = sess.run(tf_loss_summary,feed_dict={loss_sum: train_loss_mean})
-                            writer_train.add_summary(summ1, epoch)
-                            writer_train.flush()
-
-                            summ2 = sess.run(tf_loss_summary,feed_dict={loss_sum: val_loss_mean})
-                            writer_val.add_summary(summ2, epoch)
-                            writer_val.flush()
-
-                            summ3 = sess.run(tf_loss_summary,feed_dict={loss_sum: val_loss_last_mean})
-                            writer_val_smooth.add_summary(summ3, epoch)
-                            writer_val_smooth.flush()
-
-
-                            ### Early stopping ###
-                            print('Best: ' + str(val_loss_best) + ' Current: ' + str(val_loss_mean) + ' Mean: ' + str(val_loss_last_mean))
-                            if val_loss_last_mean < val_loss_best:
-                                val_loss_best = val_loss_last_mean
-
-                                trainingBool = True
-                                validationBool = True
-
-                                bestCount = 0
-
-                                # Save model
-                                saveStr = './savedModels_HP_Tune/hp_chechpoint' + str(rate) + '_' + str(units) + '_' + str(nfft) + '_' + str(batch) + '_' + str(epoch) + '.ckpt'
-                                saver.save(sess, saveStr)
-
-                            elif bestCount < mp.STOP_COUNT:
-                                trainingBool = True
-                                validationBool = True
-
-                                bestCount += 1
-                            else:
-                                trainingBool = False
-                                validationBool = False
-
+                            print('End of epoch:' + str(epoch) + " Number of global steps:" + str(sess.run(tf.train.get_global_step())))
                             toc = time.time()
                             print(np.round(toc-tic,2),"s")
                             print()
+
+
                         else:
                             break
-                    writer_train.close()
-                    writer_val.close()
-                    writer_val_smooth.close()
+
 
                     #hp_tuning_results = np.concatenate((hp_tuning_results,np.asarray([rate,units,nfft,batch,val_loss_best])),axis=0)
                     hp_tuning_results = np.row_stack((hp_tuning_results,np.asarray([hp_run,rate,units,nfft,batch,val_loss_best,epoch])))
@@ -323,7 +322,9 @@ for rate in hp_learning_rate:
 
 
 
-
+writer_train.close()
+writer_val.close()
+writer_val_smooth.close()
 print('Training done!')
 
 

@@ -7,7 +7,7 @@ import matplotlib.pyplot as plt
 import os
 import utils
 import time
-wavFilesPath = 'C:/Users/mhp/Documents/DNN_Datasets/bcmRecordings/testInput/'
+wavFilesPath = 'C:/Users/mhp/Documents/DNN_Datasets/allRawRecordings/'
 
 
 ##### BCM FEATURES #####
