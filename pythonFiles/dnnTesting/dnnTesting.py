@@ -1,25 +1,17 @@
-import sys
+import sys, os
 sys.path.append("C:/Users/mhp/Documents/GitHub/dnn-SpeechEnhancement/pythonFiles/dataProcessing/")
-#sys.path.append("C:/Users/TobiasToft/Documents/GitHub/dnn-SpeechEnhancement/PythonFlies/dataProcessing/")
-import tensorflow as tf
-import os
-import numpy as np
-import random
-import time
-import matplotlib.pyplot as plt
-import sounddevice as sd
-import scipy.signal as dsp
-from scipy.io import wavfile
-### Our functions ###
-import FFN_Model_Cond_Dropout
-import featureProcessing
-import dataStatistics
-import modelParameters as mp
 import utils
+pathToSavedModel = "C:/Users/mhp/Documents/GitHub/dnn-SpeechEnhancement/pythonFiles/dnnTesting/bestHyperparameterModel/run10/"
+sys.path.append(pathToSavedModel)
+import tensorflow as tf
+import numpy as np
+import modelParameters as mp
+import featureProcessing
+from scipy.io import wavfile
 
-savedModelPath = "./bestHyperparameterModel/run16/"
+utils.freezeModel(pathToSavedModel)
 
-for root, dirs, files in os.walk(savedModelPath + 'predictionFiles/', topdown=False):
+for root, dirs, files in os.walk(pathToSavedModel + 'predictionFiles/', topdown=False):
     for name in files:
         os.remove(os.path.join(root, name))
     for name in dirs:
@@ -27,7 +19,7 @@ for root, dirs, files in os.walk(savedModelPath + 'predictionFiles/', topdown=Fa
 
 tf.reset_default_graph()
 
-trainingStats = np.load(savedModelPath + "trainingStatistics.npy")
+trainingStats = np.load(pathToSavedModel + "trainingStatistics.npy")
 
 featMean = trainingStats[0]
 featStd = trainingStats[1]
@@ -39,10 +31,10 @@ label_root_test  = dataPath + 'testReference/'
 
 allFilesTest = os.listdir(feat_root_test)
 #random.shuffle(allFilesTest)
-#allFilesTest = allFilesTest[:10]
+allFilesTest = allFilesTest[:1]
 
 ### UNFREEZE MODEL ###
-frozen_graph= savedModelPath + "myFrozenModel.pb"
+frozen_graph= pathToSavedModel + "myFrozenModel.pb"
 with tf.gfile.GFile(frozen_graph, "rb") as f:
     restored_graph_def = tf.GraphDef()
     restored_graph_def.ParseFromString(f.read())
@@ -86,12 +78,12 @@ with tf.Session(graph=graph) as sess:
         y =  y*32767
         y = y.astype(np.int16)
         newWavName = file.replace('feat','pred')
-        wavfile.write(savedModelPath + 'predictionFiles/' + newWavName,12000,y)
+        wavfile.write(pathToSavedModel + 'predictionFiles/' + newWavName,12000,y)
         print('File ' + str(n) + ' done!')
         n += 1
 
 print('Inference done!')
 
-import qualityAssessment
 
-#sd.play(y,12000)
+
+MCC_mean_input, pesqScore_mean_input, MCC_mean_pred, pesqScore_mean_pred, segMCC_mean_input, segMCC_mean_pred, freq = utils.qualityAssessment(pathToSavedModel + 'predictionFiles/',feat_root_test,label_root_test)

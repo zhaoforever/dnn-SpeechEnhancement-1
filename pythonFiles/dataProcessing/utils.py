@@ -4,6 +4,86 @@ import numpy as np
 import os
 from scipy import signal
 
+def qualityAssessment(predictionPath,inputPath,referencePath):
+	import pesq_calc
+	import MCC_calc
+	### Dataset and feature extraction parameters ###
+	NFFT = 512
+
+	# initialize empty arrays
+	MCC_all_pred = []
+	MCC_all_input = []
+	segMCC_all_pred = np.empty((int(NFFT/2+1),0), int)
+	segMCC_all_input = np.empty((int(NFFT/2+1),0), int)
+	pesqScore_all_pred = []
+	pesqScore_all_input = []
+
+	allFiles = os.listdir(predictionPath)
+
+	n = 1
+	for file in allFiles:
+		#tic = time.time()
+		filePathPrediction = predictionPath + file
+		filePathInput = inputPath + file.replace('pred','feat')
+		filePathReference = referencePath + file.replace('pred','ref')
+
+		### MCC ###
+
+		# Prediction
+		MCC_pred,segMCC_pred,freq = MCC_calc.MCC_calc(filePathReference,filePathPrediction,NFFT)
+		MCC_all_pred.append(MCC_pred)
+		segMCC_all_pred = np.append(segMCC_all_pred,segMCC_pred,axis=1)
+		# Input
+		MCC_input,segMCC_input,freq = MCC_calc.MCC_calc(filePathReference,filePathInput,NFFT)
+		MCC_all_input.append(MCC_input)
+		segMCC_all_input = np.append(segMCC_all_input,segMCC_input,axis=1)
+
+
+
+		pesqScore_pred = pesq_calc.pesq_calc(filePathReference,filePathPrediction)
+		pesqScore_all_pred = np.append(pesqScore_all_pred,pesqScore_pred)
+
+		pesqScore_input = pesq_calc.pesq_calc(filePathReference,filePathInput)
+		pesqScore_all_input = np.append(pesqScore_all_input,pesqScore_input)
+
+		print("File nr. " +  str(n) + " done!")
+		n+=1
+		#toc = time.time()
+		#print(toc-tic)
+
+	MCC_mean_pred = np.mean(MCC_all_pred)
+	MCC_mean_input = np.mean(MCC_all_input)
+	segMCC_mean_pred = np.mean(segMCC_all_pred,axis=1)
+	segMCC_mean_input = np.mean(segMCC_all_input,axis=1)
+
+	pesqScore_mean_pred = np.mean(pesqScore_all_pred)
+	pesqScore_mean_input = np.mean(pesqScore_all_input)
+
+
+	#print("Size of dataset: " + str(np.size(allFiles)) + " wav files" + "\n")
+	#print("            MCC   PESQ")
+	#print("Input:      " + str(np.round(MCC_mean_input,2)) + " " + str(np.round(pesqScore_mean_input,2)))
+	#print("Prediction: " + str(np.round(MCC_mean_pred,2)) + " " + str(np.round(pesqScore_mean_pred,2)))
+	#print("Difference: " + str(np.round((MCC_mean_pred-MCC_mean_input),2)) + " " + str(np.round((pesqScore_mean_pred-pesqScore_mean_input),2)))
+
+	return MCC_mean_input, pesqScore_mean_input, MCC_mean_pred, pesqScore_mean_pred, segMCC_mean_input, segMCC_mean_pred, freq
+
+def freezeModel(savedModelPath):
+
+	saver = tf.train.import_meta_graph(tf.train.latest_checkpoint(savedModelPath) + '.meta', clear_devices=True)
+	graph = tf.get_default_graph()
+	input_graph_def = graph.as_graph_def()
+	sess = tf.Session()
+	saver.restore(sess, tf.train.latest_checkpoint(savedModelPath))
+	# Output from the model that needs to be freezed
+	output_node_names = "out/BiasAdd"
+	output_graph_def = tf.graph_util.convert_variables_to_constants(sess,input_graph_def,output_node_names.split(","))
+	output_graph = savedModelPath + "myFrozenModel.pb"
+	with tf.gfile.GFile(output_graph, "wb") as f:
+	    f.write(output_graph_def.SerializeToString())
+	sess.close()
+	return
+
 def adjustSNR(x,dB):
 	x = x/np.max(np.abs(x))
 	xRms = np.sqrt(np.mean(np.square(x)))

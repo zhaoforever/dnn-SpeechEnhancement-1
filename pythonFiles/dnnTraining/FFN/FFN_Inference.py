@@ -18,7 +18,7 @@ import utils
 
 tf.reset_default_graph()
 
-savedModelPath = "./savedModelsTrain/"
+savedModelPath = "./savedModels_HP_Tune/"
 trainingStats = np.load(savedModelPath + "trainingStatistics.npy")
 
 featMean = trainingStats[0]

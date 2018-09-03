@@ -1,5 +1,4 @@
 import sys
-sys.path.append("C:/Users/TobiasToft/Documents/GitHub/dnn-SpeechEnhancement/PythonFlies/dataProcessing/")
 import utils
 import vqmetrics
 import os

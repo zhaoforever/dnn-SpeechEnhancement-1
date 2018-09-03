@@ -1,0 +1,2 @@
+model_checkpoint_path: "hp_chechpoint1e-05_512_128_32_5.ckpt"
+all_model_checkpoint_paths: "hp_chechpoint1e-05_512_128_32_5.ckpt"

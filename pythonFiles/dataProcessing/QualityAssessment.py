@@ -9,7 +9,7 @@ import random
 import numpy as np
 import matplotlib.pyplot as plt
 
-predictionPath = "C:/Users/mhp/Documents/GitHub/dnn-SpeechEnhancement/pythonFiles/dnnTraining/FFN/predictionFiles/"
+predictionPath = "C:/Users/mhp/Documents/GitHub/dnn-SpeechEnhancement/pythonFiles/dnnTraining/FFN/bestHyperparameterModel/run16/predictionFiles/"
 inputPath = 'C:/Users/mhp/Documents/DNN_Datasets/bcmRecordings/testInput/'
 referencePath = 'C:/Users/mhp/Documents/DNN_Datasets/bcmRecordings/testReference/'
 

@@ -2,7 +2,7 @@ import tensorflow as tf
 import numpy as np
 tf.reset_default_graph()
 
-savedModelPath = './savedModelsTrain/'
+savedModelPath = './bestHyperparameterModel/run16/'
 
 saver = tf.train.import_meta_graph(tf.train.latest_checkpoint(savedModelPath) + '.meta', clear_devices=True)
 graph = tf.get_default_graph()

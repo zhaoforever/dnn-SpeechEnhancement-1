@@ -123,7 +123,7 @@ for rate in hp_learning_rate:
 
                 ### Data statistics ###
                 print('Calculating data statistics ...')
-                tic = time.time()
+                toc = time.time()
                 featMean, featStd = dataStatistics.calcMeanAndStd(label_root_train,mp.DATASET_SIZE_TRAIN,nfft,mp.STFT_OVERLAP,mp.BIN_WIZE)
                 toc = time.time()
                 print(np.round(toc-tic,2),"secs to calc data stats")

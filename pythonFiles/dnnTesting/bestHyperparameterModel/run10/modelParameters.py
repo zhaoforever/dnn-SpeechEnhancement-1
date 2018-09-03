@@ -9,7 +9,7 @@ DECAYING_LEARNING_RATE = True
 ### Dataset and feature extraction parameters ###
 DATASET_SIZE_TRAIN = 10
 DATASET_SIZE_VAL = 1
-NUM_UNITS = 512
+NUM_UNITS = 256
 NFFT = 256
 NUMBER_BINS = int(NFFT/2+1)
 STFT_OVERLAP = 0.75
